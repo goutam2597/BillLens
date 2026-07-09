@@ -1,0 +1,2219 @@
+# Smart Receipt Scanner AI App
+
+# Complete Development Plan Using Flutter BLoC Architecture
+
+Version: 1.0
+
+---
+
+# Main Goal
+
+Build a production-ready **offline-first AI receipt scanner mobile app** using **Flutter + BLoC Architecture**.
+
+The app will help freelancers and small business owners scan receipts, extract expense data, categorize expenses using AI, save data offline, and sync with a PHP/MySQL backend when internet is available.
+
+---
+
+# Core Features
+
+* User authentication
+* Offline-first expense management
+* Receipt scanning
+* Receipt image cropping
+* OCR text extraction
+* AI expense categorization
+* Manual expense entry
+* Expense list and details
+* Category management
+* Analytics and reports
+* PDF/CSV export
+* Cloud sync
+* Subscription system
+* Google AdMob ads for free users
+* No ads for premium users
+
+---
+
+# Technology Stack
+
+## Mobile App
+
+Framework:
+
+* Flutter
+
+Architecture:
+
+* BLoC Architecture
+* Clean Architecture
+* Feature-first folder structure
+* Repository Pattern
+* Dependency Injection
+
+State Management:
+
+* flutter_bloc
+* bloc
+* equatable
+
+Local Database:
+
+* SQLite
+* Drift recommended
+
+Local Preferences:
+
+* Hive
+* SharedPreferences
+
+Networking:
+
+* Dio
+
+Image Handling:
+
+* camera
+* image_picker
+* image_cropper
+
+Connectivity:
+
+* connectivity_plus
+
+Ads:
+
+* google_mobile_ads
+
+Authentication:
+
+* JWT token-based authentication
+
+Notifications:
+
+* Firebase Cloud Messaging
+
+---
+
+# Backend Stack
+
+Backend:
+
+* Raw PHP REST API
+
+Database:
+
+* MySQL
+
+Authentication:
+
+* JWT
+
+File Storage:
+
+* Server upload folder
+
+AI Integration:
+
+* OCR API
+* OpenAI / Gemini / Claude API for categorization
+
+---
+
+# App Development Phases
+
+## Phase 1: Flutter UI Design
+
+Build all screens with dummy/local data first.
+
+## Phase 2: Flutter BLoC Architecture Setup
+
+Create BLoC, Events, States, Repositories, Models, and Use Cases.
+
+## Phase 3: Offline Database Integration
+
+Save all important data locally first.
+
+## Phase 4: Receipt Scanner + OCR + AI Flow
+
+Scan receipt, extract data, categorize expense, and save locally.
+
+## Phase 5: PHP/MySQL Backend
+
+Create REST API, authentication, sync system, upload system, and AI processing.
+
+## Phase 6: Sync System
+
+Sync local data with backend when internet is available.
+
+## Phase 7: Ads + Subscription
+
+Show ads for free users and remove ads for premium users.
+
+## Phase 8: Testing + Release
+
+Test offline, online, sync, ads, authentication, reports, and release.
+
+---
+
+# Total Screen Count
+
+The app should contain approximately **25 screens**.
+
+---
+
+# Screen List
+
+## 1. Splash Screen
+
+Purpose:
+
+* Show app logo
+* Initialize app
+* Check local database
+* Check saved token
+* Check user login status
+* Navigate to onboarding, login, or dashboard
+
+BLoC:
+
+* SplashBloc
+
+Events:
+
+* AppStarted
+* CheckAuthStatus
+* CheckOnboardingStatus
+
+States:
+
+* SplashInitial
+* SplashLoading
+* SplashAuthenticated
+* SplashUnauthenticated
+* SplashFirstTimeUser
+
+---
+
+## 2. Onboarding Screen 1
+
+Title:
+
+Never lose your receipts again
+
+Content:
+
+* User can scan and save receipts digitally
+* Show receipt scanning illustration
+
+---
+
+## 3. Onboarding Screen 2
+
+Title:
+
+AI understands your expenses
+
+Example:
+
+Starbucks → Client Meeting
+Amazon → Office Supplies
+Uber → Business Travel
+
+---
+
+## 4. Onboarding Screen 3
+
+Title:
+
+Save hours every month
+
+Content:
+
+* Auto categorization
+* Monthly reports
+* Tax-ready expense records
+
+Button:
+
+Get Started
+
+BLoC:
+
+* OnboardingCubit
+
+Purpose:
+
+* Save onboarding completion locally
+
+---
+
+## 5. Welcome Screen
+
+Purpose:
+
+Show login/register options.
+
+Buttons:
+
+* Login
+* Register
+* Continue with Google
+* Continue with Apple
+
+---
+
+## 6. Login Screen
+
+Fields:
+
+* Email
+* Password
+
+Actions:
+
+* Login
+* Forgot Password
+
+BLoC:
+
+* AuthBloc
+
+Events:
+
+* LoginRequested
+* GoogleLoginRequested
+* AppleLoginRequested
+
+States:
+
+* AuthInitial
+* AuthLoading
+* Authenticated
+* AuthError
+
+---
+
+## 7. Registration Screen
+
+Fields:
+
+* Name
+* Email
+* Password
+* Business Name
+* Currency
+
+Actions:
+
+* Register
+* Go to Login
+
+BLoC:
+
+* AuthBloc
+
+Events:
+
+* RegisterRequested
+
+---
+
+## 8. OTP Verification Screen
+
+Purpose:
+
+* Email verification
+* Password reset verification
+
+Fields:
+
+* OTP code
+
+Actions:
+
+* Verify OTP
+* Resend OTP
+
+BLoC:
+
+* OtpBloc
+
+Events:
+
+* VerifyOtpRequested
+* ResendOtpRequested
+
+States:
+
+* OtpInitial
+* OtpLoading
+* OtpVerified
+* OtpError
+
+---
+
+## 9. Dashboard Screen
+
+Purpose:
+
+Main home screen.
+
+Sections:
+
+* Greeting
+* Monthly expense summary
+* Quick actions
+* Recent expenses
+* Sync status
+* Ads section for free users
+
+Quick Actions:
+
+* Scan Receipt
+* Upload Receipt
+* Add Manual Expense
+
+Example UI:
+
+Hello Goutam
+
+Monthly Expense
+$2,450
+
+Quick Actions:
+
+* Scan Receipt
+* Upload Image
+* Add Manual Expense
+
+Recent Expenses:
+
+* Starbucks — Client Meeting — $12.50
+* Uber — Travel — $25
+* Staples — Office Supplies — $75
+
+Ad Placement:
+
+* Free user: Bottom banner ad
+* Premium user: No ad
+
+Ad Type:
+
+* Banner Ad
+* Size: 320x50
+
+BLoC:
+
+* DashboardBloc
+* ExpenseBloc
+* SyncBloc
+* SubscriptionBloc
+* AdsBloc
+
+Events:
+
+* LoadDashboardData
+* LoadRecentExpenses
+* CheckSyncStatus
+* CheckSubscriptionStatus
+
+States:
+
+* DashboardInitial
+* DashboardLoading
+* DashboardLoaded
+* DashboardError
+
+---
+
+## 10. Receipt Scanner Screen
+
+Purpose:
+
+Camera screen for scanning receipts.
+
+Features:
+
+* Camera preview
+* Flash toggle
+* Gallery upload
+* Capture button
+* Receipt frame guide
+
+Actions:
+
+* Capture receipt
+* Select image from gallery
+* Turn flash on/off
+
+BLoC:
+
+* ReceiptScannerBloc
+
+Events:
+
+* InitializeCamera
+* CaptureReceipt
+* PickReceiptFromGallery
+* ToggleFlash
+
+States:
+
+* ScannerInitial
+* ScannerReady
+* ScannerCapturing
+* ScannerImageCaptured
+* ScannerError
+
+---
+
+## 11. Receipt Crop Screen
+
+Purpose:
+
+Allow user to crop and rotate receipt image.
+
+Features:
+
+* Crop image
+* Rotate image
+* Retake image
+* Continue button
+
+BLoC:
+
+* ReceiptImageBloc
+
+Events:
+
+* CropReceiptImage
+* RotateReceiptImage
+* ConfirmReceiptImage
+
+States:
+
+* ReceiptImageInitial
+* ReceiptImageEditing
+* ReceiptImageReady
+* ReceiptImageError
+
+---
+
+## 12. AI Processing Screen
+
+Purpose:
+
+Show processing progress while app extracts receipt data.
+
+Steps:
+
+* Image processing
+* OCR reading
+* Vendor detection
+* Amount detection
+* Date detection
+* AI categorization
+
+Example UI:
+
+Analyzing Receipt...
+
+✓ Image Processing
+✓ OCR Reading
+✓ Extracting Vendor
+✓ Extracting Amount
+✓ AI Categorization
+
+BLoC:
+
+* ReceiptProcessingBloc
+
+Events:
+
+* StartReceiptProcessing
+* RunOcrExtraction
+* RunAiCategorization
+
+States:
+
+* ProcessingInitial
+* ProcessingLoading
+* OcrCompleted
+* AiCategorizationCompleted
+* ProcessingSuccess
+* ProcessingError
+
+Important:
+
+If internet is unavailable:
+
+* Save image locally
+* Mark AI processing as pending
+* User can manually add data
+* Process later when internet is available
+
+---
+
+## 13. Receipt Result Screen
+
+Purpose:
+
+Show extracted receipt data before saving.
+
+Display:
+
+* Vendor
+* Amount
+* Date
+* Category
+* Payment method
+* AI confidence score
+* Receipt image preview
+
+Example:
+
+Vendor: Starbucks
+Amount: $12.50
+Date: 09 July 2026
+Category: Client Meeting
+Confidence: 95%
+
+Actions:
+
+* Save Expense
+* Edit Details
+* Retake
+
+BLoC:
+
+* ExpenseBloc
+
+Events:
+
+* SaveExpenseRequested
+* EditExpenseRequested
+
+States:
+
+* ExpenseSaving
+* ExpenseSaved
+* ExpenseError
+
+---
+
+## 14. Manual Expense / Edit Expense Screen
+
+Purpose:
+
+Allow user to add or edit expense manually.
+
+Fields:
+
+* Vendor
+* Amount
+* Date
+* Category
+* Payment Method
+* Client Name
+* Project Name
+* Notes
+* Receipt Image
+
+Actions:
+
+* Save
+* Delete
+* Cancel
+
+BLoC:
+
+* ExpenseFormBloc
+
+Events:
+
+* ExpenseFormStarted
+* ExpenseVendorChanged
+* ExpenseAmountChanged
+* ExpenseCategoryChanged
+* ExpenseDateChanged
+* ExpenseSaved
+
+States:
+
+* ExpenseFormInitial
+* ExpenseFormValid
+* ExpenseFormInvalid
+* ExpenseFormSubmitting
+* ExpenseFormSuccess
+* ExpenseFormError
+
+---
+
+## 15. Expense List Screen
+
+Purpose:
+
+Show all saved expenses.
+
+Features:
+
+* Search expenses
+* Filter by date
+* Filter by category
+* Sort by amount/date
+* Offline data loading
+* Pull to refresh
+
+Filters:
+
+* Today
+* This Week
+* This Month
+* Custom Range
+
+Ad Placement:
+
+* Native ad after every 5 expense cards for free users
+* No ads for premium users
+
+BLoC:
+
+* ExpenseBloc
+
+Events:
+
+* LoadExpenses
+* SearchExpenses
+* FilterExpenses
+* SortExpenses
+* DeleteExpense
+
+States:
+
+* ExpenseInitial
+* ExpenseLoading
+* ExpenseLoaded
+* ExpenseEmpty
+* ExpenseError
+
+---
+
+## 16. Expense Details Screen
+
+Purpose:
+
+Show full details of one expense.
+
+Display:
+
+* Receipt image
+* Vendor
+* Amount
+* Date
+* Category
+* Payment method
+* Notes
+* AI explanation
+* Sync status
+
+Actions:
+
+* Edit
+* Delete
+* Share
+* Export
+
+BLoC:
+
+* ExpenseDetailsBloc
+
+Events:
+
+* LoadExpenseDetails
+* DeleteExpenseRequested
+* ShareExpenseRequested
+
+States:
+
+* ExpenseDetailsLoading
+* ExpenseDetailsLoaded
+* ExpenseDetailsError
+
+---
+
+## 17. Category Management Screen
+
+Purpose:
+
+Manage expense categories.
+
+Default Business Categories:
+
+* Client Meeting
+* Travel
+* Office Supplies
+* Software
+* Marketing
+* Fuel
+* Meals
+* Internet
+* Utilities
+
+Default Personal Categories:
+
+* Food
+* Shopping
+* Entertainment
+* Health
+* Other
+
+Features:
+
+* Add category
+* Edit category
+* Delete category
+* Mark category as business or personal
+
+BLoC:
+
+* CategoryBloc
+
+Events:
+
+* LoadCategories
+* AddCategory
+* UpdateCategory
+* DeleteCategory
+
+States:
+
+* CategoryInitial
+* CategoryLoading
+* CategoryLoaded
+* CategoryError
+
+---
+
+## 18. Analytics Dashboard Screen
+
+Purpose:
+
+Show expense analytics.
+
+Charts:
+
+* Monthly spending chart
+* Category distribution chart
+* Weekly spending trend
+* Business vs personal expense chart
+
+Ad Placement:
+
+* Banner/native ad between analytics sections for free users
+
+BLoC:
+
+* AnalyticsBloc
+
+Events:
+
+* LoadAnalytics
+* ChangeAnalyticsDateRange
+
+States:
+
+* AnalyticsInitial
+* AnalyticsLoading
+* AnalyticsLoaded
+* AnalyticsError
+
+---
+
+## 19. AI Insights Screen
+
+Purpose:
+
+Show AI-generated financial insights.
+
+Examples:
+
+* Your travel expense increased by 30%
+* You spent $240 on coffee this month
+* Possible tax-deductible expenses: $1,200
+* You can save around $150/month by reducing non-business meals
+
+BLoC:
+
+* AiInsightsBloc
+
+Events:
+
+* LoadAiInsights
+* RefreshAiInsights
+
+States:
+
+* AiInsightsInitial
+* AiInsightsLoading
+* AiInsightsLoaded
+* AiInsightsError
+
+Ad Placement:
+
+* Rewarded ad for free users to unlock advanced AI insight
+* Premium users get full access
+
+---
+
+## 20. Reports Screen
+
+Purpose:
+
+Generate reports.
+
+Report Types:
+
+* Monthly Report
+* Tax Report
+* Business Expense Report
+* Category Report
+* Client Expense Report
+
+Export:
+
+* PDF
+* CSV
+
+BLoC:
+
+* ReportsBloc
+
+Events:
+
+* GenerateReport
+* ExportPdfReport
+* ExportCsvReport
+
+States:
+
+* ReportsInitial
+* ReportsGenerating
+* ReportsGenerated
+* ReportsExported
+* ReportsError
+
+Ad Placement:
+
+* Banner ad at bottom for free users
+
+---
+
+## 21. Subscription Screen
+
+Purpose:
+
+Show free and premium plans.
+
+Free Plan:
+
+* 10 scans/month
+* Basic reports
+* Ads enabled
+* Limited AI insights
+
+Premium Plan:
+
+* Unlimited scans
+* No ads
+* Full AI insights
+* Cloud backup
+* Advanced reports
+* Priority support
+
+BLoC:
+
+* SubscriptionBloc
+
+Events:
+
+* LoadPlans
+* PurchasePlan
+* RestorePurchase
+* VerifySubscription
+
+States:
+
+* SubscriptionInitial
+* SubscriptionLoading
+* SubscriptionLoaded
+* SubscriptionPurchased
+* SubscriptionError
+
+---
+
+## 22. Profile Screen
+
+Purpose:
+
+User profile management.
+
+Fields:
+
+* Name
+* Email
+* Business Name
+* Currency
+* Subscription status
+
+Actions:
+
+* Edit profile
+* Change password
+* Logout
+
+BLoC:
+
+* ProfileBloc
+
+Events:
+
+* LoadProfile
+* UpdateProfile
+* LogoutRequested
+
+States:
+
+* ProfileInitial
+* ProfileLoading
+* ProfileLoaded
+* ProfileUpdated
+* ProfileError
+
+---
+
+## 23. Settings Screen
+
+Purpose:
+
+App settings.
+
+Options:
+
+* Theme
+* Language
+* Notification
+* Currency
+* Privacy
+* Sync settings
+* Delete account
+
+BLoC:
+
+* SettingsBloc
+
+Events:
+
+* LoadSettings
+* UpdateTheme
+* UpdateLanguage
+* UpdateCurrency
+* UpdateNotificationSettings
+
+States:
+
+* SettingsInitial
+* SettingsLoaded
+* SettingsUpdated
+* SettingsError
+
+---
+
+## 24. Sync Status Screen
+
+Purpose:
+
+Show offline sync details.
+
+Display:
+
+* Total offline expenses
+* Pending sync items
+* Failed sync items
+* Last sync time
+* Sync now button
+
+Example:
+
+Offline Expenses: 125
+Pending Sync: 8
+Last Sync: Today 10:30 AM
+
+BLoC:
+
+* SyncBloc
+
+Events:
+
+* LoadSyncStatus
+* StartManualSync
+* RetryFailedSync
+* AutoSyncStarted
+
+States:
+
+* SyncInitial
+* SyncIdle
+* SyncInProgress
+* SyncCompleted
+* SyncFailed
+
+---
+
+## 25. Help & Support Screen
+
+Purpose:
+
+Support and legal information.
+
+Sections:
+
+* FAQ
+* Contact support
+* Privacy policy
+* Terms of service
+* App version
+
+---
+
+# Offline-First App Flow
+
+The app must always save data locally first.
+
+Flow:
+
+User scans receipt
+↓
+Receipt image saved locally
+↓
+Extracted data saved locally
+↓
+Expense appears immediately in app
+↓
+If internet is available, sync with server
+↓
+If internet is unavailable, add item to sync queue
+↓
+Sync automatically later
+
+---
+
+# Local Database Structure
+
+Use SQLite/Drift.
+
+## users
+
+Fields:
+
+* id
+* local_id
+* server_id
+* name
+* email
+* business_name
+* currency
+* token
+* subscription
+* created_at
+* updated_at
+
+## expenses
+
+Fields:
+
+* id
+* local_id
+* server_id
+* user_id
+* vendor
+* amount
+* currency
+* category_id
+* date
+* payment_method
+* client_name
+* project_name
+* notes
+* receipt_image_local_path
+* receipt_image_remote_url
+* ai_confidence
+* ai_explanation
+* sync_status
+* is_deleted
+* created_at
+* updated_at
+
+## categories
+
+Fields:
+
+* id
+* local_id
+* server_id
+* user_id
+* name
+* type
+* icon
+* color
+* sync_status
+* created_at
+* updated_at
+
+## sync_queue
+
+Fields:
+
+* id
+* action
+* table_name
+* local_record_id
+* payload
+* status
+* retry_count
+* error_message
+* created_at
+* updated_at
+
+## app_settings
+
+Fields:
+
+* id
+* key
+* value
+
+---
+
+# Sync Status Values
+
+Use these values:
+
+* pending
+* synced
+* failed
+* conflict
+* deleted
+
+---
+
+# Flutter Project Structure Using BLoC
+
+Use this structure:
+
+lib/
+
+* main.dart
+* app.dart
+
+core/
+
+* constants/
+* errors/
+* network/
+* database/
+* di/
+* router/
+* theme/
+* utils/
+* widgets/
+
+features/
+
+auth/
+
+* data/
+
+  * models/
+  * datasources/
+  * repositories/
+* domain/
+
+  * entities/
+  * repositories/
+  * usecases/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+dashboard/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+receipt_scanner/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+expenses/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+categories/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+analytics/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+reports/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+subscription/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+profile/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+settings/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * pages/
+  * widgets/
+
+sync/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * widgets/
+
+ads/
+
+* data/
+* domain/
+* presentation/
+
+  * bloc/
+  * widgets/
+
+---
+
+# Important BLoCs
+
+Create these BLoCs:
+
+## AuthBloc
+
+Responsible for:
+
+* Login
+* Register
+* Logout
+* Token saving
+* User session
+
+## DashboardBloc
+
+Responsible for:
+
+* Dashboard summary
+* Monthly expense
+* Recent expenses
+
+## ReceiptScannerBloc
+
+Responsible for:
+
+* Camera initialization
+* Image capture
+* Gallery image picking
+
+## ReceiptProcessingBloc
+
+Responsible for:
+
+* OCR processing
+* AI categorization
+* Extracted data result
+
+## ExpenseBloc
+
+Responsible for:
+
+* Expense list
+* Add expense
+* Update expense
+* Delete expense
+* Search
+* Filter
+
+## ExpenseFormBloc
+
+Responsible for:
+
+* Manual expense form
+* Edit expense form
+* Field validation
+
+## CategoryBloc
+
+Responsible for:
+
+* Category CRUD
+
+## AnalyticsBloc
+
+Responsible for:
+
+* Charts
+* Summary
+* Spending trends
+
+## ReportsBloc
+
+Responsible for:
+
+* Report generation
+* PDF export
+* CSV export
+
+## SubscriptionBloc
+
+Responsible for:
+
+* Free/premium status
+* Plan loading
+* Payment verification
+
+## SyncBloc
+
+Responsible for:
+
+* Auto sync
+* Manual sync
+* Retry failed sync
+* Sync queue
+
+## AdsBloc
+
+Responsible for:
+
+* Load ads
+* Hide ads for premium users
+* Show banner/native/rewarded ads
+
+## SettingsBloc
+
+Responsible for:
+
+* Theme
+* Language
+* Currency
+* Notification settings
+
+---
+
+# Repository Layer
+
+Use repository pattern.
+
+Repositories:
+
+* AuthRepository
+* UserRepository
+* ExpenseRepository
+* CategoryRepository
+* ReceiptRepository
+* AnalyticsRepository
+* ReportsRepository
+* SubscriptionRepository
+* SyncRepository
+* AdsRepository
+
+Each repository should communicate with:
+
+* Local data source
+* Remote data source
+
+Example:
+
+ExpenseRepository should use:
+
+* ExpenseLocalDataSource
+* ExpenseRemoteDataSource
+
+Offline-first rule:
+
+* Write to local database first
+* Then add to sync queue
+* Then sync with remote server when possible
+
+---
+
+# Data Source Layer
+
+## Local Data Sources
+
+Create:
+
+* AuthLocalDataSource
+* ExpenseLocalDataSource
+* CategoryLocalDataSource
+* ReceiptLocalDataSource
+* SettingsLocalDataSource
+* SyncLocalDataSource
+
+## Remote Data Sources
+
+Create:
+
+* AuthRemoteDataSource
+* ExpenseRemoteDataSource
+* CategoryRemoteDataSource
+* ReceiptRemoteDataSource
+* AiRemoteDataSource
+* SyncRemoteDataSource
+* SubscriptionRemoteDataSource
+
+---
+
+# UI Design Style
+
+Design should be:
+
+* Professional
+* Clean
+* Minimal
+* SaaS-style
+* Finance app inspired
+
+Color suggestion:
+
+* Primary: Blue or Green
+* Background: White/Light Gray
+* Accent: Soft gradient
+* Dark mode supported
+
+Components:
+
+* Custom AppBar
+* Expense Card
+* Category Chip
+* Summary Card
+* Chart Card
+* Sync Status Badge
+* Premium Badge
+* Ad Container
+* Empty State Widget
+* Error Widget
+* Loading Skeleton
+
+---
+
+# Ads Placement Plan
+
+Ads must only show for free users.
+
+Premium users should never see ads.
+
+## Dashboard Screen
+
+Ad Type:
+
+* Banner Ad
+
+Position:
+
+* Bottom of screen
+
+## Expense List Screen
+
+Ad Type:
+
+* Native Ad
+
+Position:
+
+* After every 5 expense cards
+
+## Analytics Screen
+
+Ad Type:
+
+* Native/Banner Ad
+
+Position:
+
+* Between chart sections
+
+## Reports Screen
+
+Ad Type:
+
+* Banner Ad
+
+Position:
+
+* Bottom of screen
+
+## AI Insights Screen
+
+Ad Type:
+
+* Rewarded Ad
+
+Position:
+
+* Before unlocking advanced AI insight
+
+---
+
+# PHP/MySQL Backend Plan
+
+Backend must be built using raw PHP REST API and MySQL.
+
+---
+
+# Backend Folder Structure
+
+backend/
+
+* api/
+* config/
+* controllers/
+* models/
+* services/
+* middleware/
+* helpers/
+* uploads/
+* database/
+* logs/
+
+---
+
+# Backend Core Files
+
+config/
+
+* database.php
+* jwt.php
+* app.php
+
+middleware/
+
+* auth_middleware.php
+* cors_middleware.php
+
+controllers/
+
+* AuthController.php
+* UserController.php
+* ExpenseController.php
+* CategoryController.php
+* ReceiptController.php
+* SyncController.php
+* AiController.php
+* SubscriptionController.php
+
+models/
+
+* User.php
+* Expense.php
+* Category.php
+* Receipt.php
+* Subscription.php
+* Payment.php
+* SyncLog.php
+
+services/
+
+* JwtService.php
+* UploadService.php
+* OcrService.php
+* AiService.php
+* SyncService.php
+* PaymentService.php
+
+---
+
+# API Endpoints
+
+## Authentication API
+
+POST /api/register
+
+Request:
+
+* name
+* email
+* password
+* business_name
+* currency
+
+Response:
+
+* user
+* token
+
+POST /api/login
+
+Request:
+
+* email
+* password
+
+Response:
+
+* user
+* token
+
+POST /api/logout
+
+POST /api/reset-password
+
+POST /api/verify-otp
+
+---
+
+## User API
+
+GET /api/profile
+
+PUT /api/profile
+
+DELETE /api/delete-account
+
+---
+
+## Expense API
+
+GET /api/expenses
+
+POST /api/expenses
+
+PUT /api/expenses/{id}
+
+DELETE /api/expenses/{id}
+
+GET /api/expenses/{id}
+
+---
+
+## Category API
+
+GET /api/categories
+
+POST /api/categories
+
+PUT /api/categories/{id}
+
+DELETE /api/categories/{id}
+
+---
+
+## Receipt Upload API
+
+POST /api/upload-receipt
+
+Request:
+
+* image file
+* local_expense_id
+
+Response:
+
+* receipt_url
+* server_receipt_id
+
+---
+
+## AI Processing API
+
+POST /api/ai/process-receipt
+
+Request:
+
+* receipt image
+
+Response:
+
+* vendor
+* amount
+* date
+* category
+* confidence
+* explanation
+
+---
+
+## Sync API
+
+POST /api/sync/upload
+
+Purpose:
+
+Upload local pending changes to server.
+
+Request:
+
+* expenses
+* categories
+* deleted_items
+* last_sync_time
+
+Response:
+
+* synced_items
+* failed_items
+* conflicts
+
+GET /api/sync/download
+
+Purpose:
+
+Download latest server changes.
+
+Response:
+
+* expenses
+* categories
+* subscriptions
+* server_time
+
+---
+
+## Subscription API
+
+GET /api/plans
+
+POST /api/subscribe
+
+POST /api/payment/verify
+
+GET /api/subscription/status
+
+---
+
+# MySQL Database Tables
+
+## users
+
+Fields:
+
+* id
+* name
+* email
+* password
+* business_name
+* currency
+* subscription_status
+* email_verified_at
+* created_at
+* updated_at
+
+## expenses
+
+Fields:
+
+* id
+* user_id
+* local_id
+* vendor
+* amount
+* currency
+* category_id
+* date
+* payment_method
+* client_name
+* project_name
+* notes
+* receipt_image
+* ai_confidence
+* ai_explanation
+* created_at
+* updated_at
+* deleted_at
+
+## categories
+
+Fields:
+
+* id
+* user_id
+* local_id
+* name
+* type
+* icon
+* color
+* created_at
+* updated_at
+* deleted_at
+
+## receipts
+
+Fields:
+
+* id
+* user_id
+* expense_id
+* image_url
+* local_path
+* ocr_text
+* ai_result
+* created_at
+
+## subscriptions
+
+Fields:
+
+* id
+* user_id
+* plan_name
+* status
+* start_date
+* end_date
+* payment_gateway
+* created_at
+* updated_at
+
+## payments
+
+Fields:
+
+* id
+* user_id
+* subscription_id
+* amount
+* currency
+* gateway
+* transaction_id
+* status
+* created_at
+
+## sync_logs
+
+Fields:
+
+* id
+* user_id
+* action
+* table_name
+* record_id
+* status
+* error_message
+* created_at
+
+## notifications
+
+Fields:
+
+* id
+* user_id
+* title
+* message
+* type
+* is_read
+* created_at
+
+---
+
+# Backend Security Requirements
+
+* Use password_hash for password storage
+* Use password_verify for login
+* Use JWT token for protected APIs
+* Validate all inputs
+* Sanitize file uploads
+* Restrict upload file types
+* Limit receipt image size
+* Enable CORS properly
+* Return JSON response for all APIs
+* Never expose PHP errors in production
+
+---
+
+# Offline Sync Rules
+
+## Create Expense Offline
+
+* Save expense in SQLite
+* Set sync_status = pending
+* Add item to sync_queue
+* Show expense immediately
+* Upload when internet is available
+
+## Update Expense Offline
+
+* Update local SQLite
+* Set sync_status = pending
+* Add update action to sync_queue
+
+## Delete Expense Offline
+
+* Soft delete locally
+* Set sync_status = pending
+* Add delete action to sync_queue
+
+## Conflict Handling
+
+If same record is updated locally and remotely:
+
+* Prefer latest updated_at timestamp
+* Keep conflict copy if needed
+* Show conflict notification if important
+
+---
+
+# AI Receipt Processing Logic
+
+## OCR Extraction
+
+Extract:
+
+* Vendor name
+* Date
+* Total amount
+* Tax amount
+* Payment method
+* Items if available
+
+## AI Categorization
+
+AI should determine:
+
+* Expense category
+* Business or personal
+* Confidence score
+* Explanation
+
+Example:
+
+Input:
+
+Vendor: Starbucks
+Amount: $12.50
+Date: 09 July 2026
+
+Output:
+
+Category: Client Meeting
+Type: Business
+Confidence: 92%
+Explanation: Starbucks is often used for meetings or food-related business discussions.
+
+---
+
+# MVP Feature List
+
+The first release must include:
+
+* Splash screen
+* Onboarding
+* Login/register
+* Dashboard
+* Receipt scanner
+* Manual expense add
+* Expense list
+* Expense details
+* Category management
+* Offline SQLite database
+* Sync queue
+* PHP/MySQL authentication
+* Expense APIs
+* Receipt upload API
+* Basic OCR/AI processing
+* Ads for free users
+* Subscription screen
+* Basic reports
+
+---
+
+# Development Timeline
+
+## Phase 1: Flutter UI Design
+
+Duration:
+
+10-15 days
+
+Tasks:
+
+* Create all screens
+* Create reusable widgets
+* Add dummy data
+* Add navigation
+* Add responsive design
+
+## Phase 2: BLoC Architecture
+
+Duration:
+
+7-10 days
+
+Tasks:
+
+* Create BLoCs
+* Create Events
+* Create States
+* Connect UI with BLoC
+* Add form validation
+
+## Phase 3: Offline Database
+
+Duration:
+
+7-10 days
+
+Tasks:
+
+* Setup SQLite/Drift
+* Create local tables
+* Implement local CRUD
+* Add sync queue
+
+## Phase 4: Receipt Scanner + AI
+
+Duration:
+
+10-15 days
+
+Tasks:
+
+* Camera integration
+* Gallery upload
+* Image crop
+* OCR
+* AI categorization
+* Receipt result screen
+
+## Phase 5: PHP/MySQL Backend
+
+Duration:
+
+25-35 days
+
+Tasks:
+
+* Database setup
+* Auth APIs
+* Expense APIs
+* Category APIs
+* Upload APIs
+* Sync APIs
+* AI APIs
+
+## Phase 6: Ads + Subscription
+
+Duration:
+
+5-7 days
+
+Tasks:
+
+* Google AdMob
+* Banner ads
+* Native ads
+* Rewarded ads
+* Premium logic
+
+## Phase 7: Testing + Release
+
+Duration:
+
+10-15 days
+
+Tasks:
+
+* Offline testing
+* Sync testing
+* API testing
+* UI testing
+* Release build
+* Play Store preparation
+
+---
+
+# Final Product Requirement
+
+The final app must be:
+
+* Offline-first
+* Built with Flutter BLoC architecture
+* Cleanly structured
+* Scalable
+* Secure
+* Fast
+* AI-powered
+* Production-ready
+* Ready for future SaaS expansion
+
+---
+
+# Important Development Rule
+
+Do not make the app depend fully on the backend.
+
+The app must work offline first.
+
+Every major action should happen locally first, then sync with the backend later.
+
+This is the most important rule of the project.
