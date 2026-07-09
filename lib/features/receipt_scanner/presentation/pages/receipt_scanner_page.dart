@@ -1,5 +1,11 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 
 class ReceiptScannerPage extends StatefulWidget {
   const ReceiptScannerPage({super.key});
@@ -9,8 +15,13 @@ class ReceiptScannerPage extends StatefulWidget {
 }
 
 class _ReceiptScannerPageState extends State<ReceiptScannerPage>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  CameraController? _controller;
+  List<CameraDescription> _cameras = [];
+  bool _isInitializing = true;
+  String? _errorMessage;
   bool _flashOn = false;
+  bool _isCapturing = false;
 
   late final AnimationController _scanLineController;
   late final Animation<double> _scanLineAnimation;
@@ -26,11 +37,122 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
     _scanLineAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scanLineController, curve: Curves.easeInOut),
     );
+
+    WidgetsBinding.instance.addObserver(this);
+    _initCamera();
+  }
+
+  Future<void> _initCamera() async {
+    setState(() {
+      _isInitializing = true;
+      _errorMessage = null;
+    });
+
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      setState(() {
+        _errorMessage = 'Camera permission is required to scan receipts.';
+        _isInitializing = false;
+      });
+      return;
+    }
+
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) {
+        setState(() {
+          _errorMessage = 'No camera available on this device.';
+          _isInitializing = false;
+        });
+        return;
+      }
+
+      final backCamera = _cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => _cameras.first,
+      );
+
+      final controller = CameraController(
+        backCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      _controller = controller;
+      await controller.initialize();
+      await controller.setFlashMode(FlashMode.off);
+
+      if (mounted) {
+        setState(() => _isInitializing = false);
+      }
+    } on CameraException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Camera error: ${e.description}';
+          _isInitializing = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      controller.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final next = !_flashOn;
+    await controller.setFlashMode(next ? FlashMode.torch : FlashMode.off);
+    setState(() => _flashOn = next);
+  }
+
+  Future<void> _capture() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized || _isCapturing) {
+      return;
+    }
+
+    setState(() => _isCapturing = true);
+    try {
+      final file = await controller.takePicture();
+      if (mounted) {
+        context.push('/scanner/crop', extra: file.path);
+      }
+    } on CameraException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Capture failed: ${e.description}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCapturing = false);
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null && mounted) {
+      context.push('/scanner/crop', extra: picked.path);
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scanLineController.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -40,9 +162,9 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Camera preview placeholder
+          // Camera preview or loading/error placeholder
           Positioned.fill(
-            child: Container(color: Colors.black),
+            child: _buildCameraPreview(),
           ),
 
           // Darkened overlay outside the scan frame
@@ -67,7 +189,7 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: () => context.safePop(AppRoutes.dashboard),
                     child: Container(
                       width: 40,
                       height: 40,
@@ -124,7 +246,7 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
                   children: [
                     // Flash toggle
                     GestureDetector(
-                      onTap: () => setState(() => _flashOn = !_flashOn),
+                      onTap: _toggleFlash,
                       child: Container(
                         width: 52,
                         height: 52,
@@ -142,8 +264,7 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
 
                     // Capture button
                     GestureDetector(
-                      onTap: () =>
-                          Navigator.of(context).pushNamed('/scanner/crop'),
+                      onTap: _capture,
                       child: Container(
                         width: 72,
                         height: 72,
@@ -152,27 +273,35 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF2563EB),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              color: Colors.white,
-                              size: 26,
-                            ),
-                          ),
+                          child: _isCapturing
+                              ? const SizedBox(
+                                  width: 28,
+                                  height: 28,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                )
+                              : Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF2563EB),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.white,
+                                    size: 26,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
 
                     // Gallery button
                     GestureDetector(
-                      onTap: () =>
-                          Navigator.of(context).pushNamed('/scanner/crop'),
+                      onTap: _pickFromGallery,
                       child: Container(
                         width: 52,
                         height: 52,
@@ -195,6 +324,60 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
         ],
       ),
     );
+  }
+
+  Widget _buildCameraPreview() {
+    if (_isInitializing) {
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    final error = _errorMessage;
+    if (error != null) {
+      return Container(
+        color: Colors.black,
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white70, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                error,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _initCamera,
+                child: Text(
+                  'Retry',
+                  style: GoogleFonts.outfit(
+                    color: const Color(0xFF2563EB),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return Container(color: Colors.black);
+    }
+
+    return CameraPreview(controller);
   }
 }
 

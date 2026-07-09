@@ -11,13 +11,51 @@
 | Phase | Description | Status | % Done |
 |---|---|---|---|
 | Phase 1 | Flutter UI Design (all screens) | ✅ **Complete** | 100% |
-| Phase 2 | BLoC Architecture Setup | 🟢 In Progress | 30% |
-| Phase 3 | Offline Database (Drift/SQLite) | 🟢 In Progress | 20% |
-| Phase 4 | Receipt Scanner + OCR + AI Flow | 🔴 Not Started | 0% |
+| Phase 2 | BLoC Architecture Setup | 🟢 In Progress | 45% |
+| Phase 3 | Offline Database (Drift/SQLite) | 🟢 In Progress | 35% |
+| Phase 4 | Receipt Scanner + OCR + AI Flow | 🟡 In Progress | 15% |
 | Phase 5 | PHP/MySQL Backend | 🔴 Not Started | 0% |
 | Phase 6 | Sync System | 🔴 Not Started | 0% |
 | Phase 7 | Ads + Subscription | 🔴 Not Started | 0% |
 | Phase 8 | Testing + Release | 🔴 Not Started | 0% |
+
+---
+
+## ✅ Recent Fixes (July 9, 2026)
+
+### Done
+- **Navigation / GoRouter fixes**
+  - Added `lib/core/router/context_ext.dart` with a `safePop(fallback)` helper.
+  - Replaced every `context.pop()` with `context.safePop(...)` so back/close buttons work even when a page is reached via `context.go`.
+  - Fixed crashes in Scanner, Crop, AI Processing, Result, Expense Details, Login, Register, OTP, Sync Status, Profile, and Analytics pages.
+- **Real camera in Receipt Scanner**
+  - `receipt_scanner_page.dart` now uses the `camera` plugin: live preview, permission request, flash toggle, capture, and gallery picker.
+  - Captured/picked image paths are passed to the Crop screen.
+- **Persistent bottom navigation bar**
+  - Main tabs (Home, Expenses, Analytics, Profile) now live inside a `StatefulShellRoute.indexedStack` with a shared `MainShell`.
+  - The bottom nav stays visible when switching between those tabs.
+- **Light mode default**
+  - `lib/app.dart` now defaults to `ThemeMode.light`.
+- **UI polish**
+  - Fixed `_SummaryCard` overflow on the Analytics page.
+  - Fixed Welcome screen layout so buttons are not squeezed on small screens.
+- **Static analysis**
+  - `dart analyze` now reports **No issues found!**
+- **Expense data + BLoC layer (scaffolded)**
+  - `ExpenseModel`, `ExpenseLocalDataSource` (Drift), `ExpenseRemoteDataSource` (mock), `ExpenseRepositoryImpl`, and use cases created.
+  - `ExpenseBloc`, `ExpenseFormBloc`, `ExpenseDetailsBloc` created.
+  - Manual DI registrations added in `lib/core/di/injection.dart`.
+  - **Not yet wired into Expense List / Add Expense / Expense Details screens.**
+
+### Still Left
+- Phase 2: Implement remaining BLoCs (`DashboardBloc`, `CategoryBloc`, `AnalyticsBloc`, `ReportsBloc`, `SubscriptionBloc`, `ProfileBloc`, `SettingsBloc`, `SyncBloc`, `AdsBloc`, `ReceiptProcessingBloc`).
+- Phase 3: Wire remaining Drift DAOs and data sources (categories, sync, subscription, ads). Expense data source is scaffolded.
+- Phase 4: Real image cropping (`image_cropper`), OCR/AI backend calls, auto-populate receipt result.
+- Phase 5: Build PHP/MySQL backend.
+- Phase 6: Sync system implementation.
+- Phase 7: AdMob wiring, subscription / payment integration.
+- Phase 8: Tests and release builds.
+- Screen 25: Help & Support screen not built.
 
 ---
 
@@ -78,9 +116,9 @@ All 25 screens planned in the spec have been built with dummy/local data. Dark m
 
 ---
 
-## 🔴 Phase 2 — BLoC Architecture Setup (NOT STARTED)
+## 🟢 Phase 2 — BLoC Architecture Setup (IN PROGRESS)
 
-All BLoC folders exist (scaffold only), but **zero BLoC files have been written**.
+`AuthBloc` and the expense BLoCs (`ExpenseBloc`, `ExpenseFormBloc`, `ExpenseDetailsBloc`) are implemented. Remaining BLoCs are still empty.
 
 ### BLoCs Required
 
@@ -91,9 +129,9 @@ All BLoC folders exist (scaffold only), but **zero BLoC files have been written*
 | `AuthBloc` | `features/auth/presentation/bloc/` | ✅ Done | LoginEvent, RegisterEvent, LogoutEvent, CheckAuthStatus | AuthInitial, AuthLoading, Authenticated, Unauthenticated, AuthError |
 | `OtpBloc` | `features/auth/presentation/bloc/` | 🔴 Empty | VerifyOtpRequested, ResendOtpRequested | OtpInitial, Loading, OtpVerified, OtpError |
 | `DashboardBloc` | `features/dashboard/presentation/bloc/` | 🔴 Empty | LoadDashboardData, LoadRecentExpenses, CheckSyncStatus | DashboardInitial, Loading, Loaded, Error |
-| `ExpenseBloc` | `features/expenses/presentation/bloc/` | 🔴 Empty | LoadExpenses, SearchExpenses, FilterExpenses, DeleteExpense | ExpenseInitial, Loading, Loaded, Empty, Error |
-| `ExpenseFormBloc` | `features/expenses/presentation/bloc/` | 🔴 Empty | Field change events, ExpenseSaved | FormInitial, Valid, Invalid, Submitting, Success, Error |
-| `ExpenseDetailsBloc` | `features/expenses/presentation/bloc/` | 🔴 Empty | LoadExpenseDetails, DeleteExpenseRequested | Loading, Loaded, Error |
+| `ExpenseBloc` | `features/expenses/presentation/bloc/` | ✅ Done | LoadExpenses, SearchExpenses, DeleteExpense | ExpenseInitial, Loading, Loaded, Error |
+| `ExpenseFormBloc` | `features/expenses/presentation/bloc/` | ✅ Done | InitializeExpenseForm, ExpenseDraftUpdated, SubmitExpenseForm | ExpenseFormState |
+| `ExpenseDetailsBloc` | `features/expenses/presentation/bloc/` | ✅ Done | LoadExpenseDetails, DeleteExpenseDetailsRequested | ExpenseDetailsInitial, Loading, Loaded, Deleted, Error |
 | `ReceiptScannerBloc` | `features/receipt_scanner/presentation/bloc/` | 🔴 Empty | InitializeCamera, CaptureReceipt, PickFromGallery, ToggleFlash | ScannerInitial, Ready, Capturing, ImageCaptured, Error |
 | `ReceiptProcessingBloc` | `features/receipt_scanner/presentation/bloc/` | 🔴 Empty | StartProcessing, RunOcr, RunAiCategorization | ProcessingInitial, Loading, OcrCompleted, AiCompleted, Success, Error |
 | `CategoryBloc` | `features/categories/presentation/bloc/` | 🔴 Empty | LoadCategories, AddCategory, UpdateCategory, DeleteCategory | CategoryInitial, Loading, Loaded, Error |
@@ -112,7 +150,7 @@ All BLoC folders exist (scaffold only), but **zero BLoC files have been written*
 | Feature | Entities | Repository Interface | Use Cases | Status |
 |---|---|---|---|---|
 | auth | `user_entity.dart` ✅ | `auth_repository.dart` ✅ | `login_usecase.dart` ✅, `register_usecase.dart` ✅, `logout_usecase.dart` ✅, `check_auth_status_usecase.dart` ✅ | ✅ Done |
-| expenses | `expense.dart` ✅ | 🔴 Not created | 🔴 Not created | Partial |
+| expenses | `expense.dart` ✅ | `expense_repository.dart` ✅ | `get_expenses_usecase.dart` ✅, `get_expense_by_id_usecase.dart` ✅, `search_expenses_usecase.dart` ✅, `create_expense_usecase.dart` ✅, `update_expense_usecase.dart` ✅, `delete_expense_usecase.dart` ✅ | ✅ Done |
 | categories | `category.dart` ✅ | 🔴 Not created | 🔴 Not created | Partial |
 | receipt_scanner | 🔴 Not created | 🔴 Not created | 🔴 Not created | Empty |
 | dashboard | 🔴 Not created | 🔴 Not created | 🔴 Not created | Empty |
@@ -123,7 +161,7 @@ All BLoC folders exist (scaffold only), but **zero BLoC files have been written*
 
 ---
 
-## 🔴 Phase 3 — Offline Database Integration (NOT STARTED)
+## 🟢 Phase 3 — Offline Database Integration (IN PROGRESS)
 
 ### Drift (SQLite) Setup
 
@@ -153,7 +191,7 @@ All BLoC folders exist (scaffold only), but **zero BLoC files have been written*
 | Feature | Data Model | Local DataSource | Remote DataSource | Repository Impl |
 |---|---|---|---|---|
 | auth | `user_model.dart` ✅ | `auth_local_data_source.dart` ✅ | `auth_remote_data_source.dart` ✅ | `auth_repository_impl.dart` ✅ |
-| expenses | 🔴 Not created | 🔴 Not created | 🔴 Not created | 🔴 Not created |
+| expenses | `expense_model.dart` ✅ | `expense_local_data_source.dart` ✅ | `expense_remote_data_source.dart` ✅ | `expense_repository_impl.dart` ✅ |
 | categories | 🔴 Not created | 🔴 Not created | 🔴 Not created | 🔴 Not created |
 | receipt_scanner | 🔴 Not created | 🔴 Not created | 🔴 Not created | 🔴 Not created |
 | sync | 🔴 Not created | 🔴 Not created | 🔴 Not created | 🔴 Not created |
@@ -161,12 +199,12 @@ All BLoC folders exist (scaffold only), but **zero BLoC files have been written*
 
 ---
 
-## 🔴 Phase 4 — Receipt Scanner + OCR + AI Flow (NOT STARTED)
+## 🟡 Phase 4 — Receipt Scanner + OCR + AI Flow (IN PROGRESS)
 
 | Item | Status |
 |---|---|
-| Live camera preview using `camera` plugin | 🔴 Not done (UI only mockup) |
-| Gallery image picker using `image_picker` | 🔴 Not done |
+| Live camera preview using `camera` plugin | ✅ Done |
+| Gallery image picker using `image_picker` | ✅ Done |
 | Receipt image cropping using `image_cropper` | 🔴 Not done (UI only mockup) |
 | Image compression using `flutter_image_compress` | 🔴 Not done |
 | OCR API integration (remote call) | 🔴 Not done |
@@ -289,11 +327,9 @@ All BLoC folders exist (scaffold only), but **zero BLoC files have been written*
 |---|---|---|
 | All navigation uses static/dummy data — no real auth state | All pages | High |
 | `withOpacity()` deprecated — should use `.withValues(alpha:)` | All files | Low (info only) |
-| Receipt Scanner uses a black container — not real camera preview | `receipt_scanner_page.dart` | High |
 | Receipt Crop is UI-only — no actual image_cropper integration | `receipt_crop_page.dart` | High |
 | AI Processing is animated placeholder — no real OCR/AI calls | `ai_processing_page.dart` | High |
 | No authentication guard in router — any route is accessible | `app_router.dart` | High |
-| No dependency injection wired (GetIt/Injectable) | `core/di/` | High |
 | No error handling layer (Failure classes, Either<>) | `core/errors/` | ✅ Fixed |
 | No Dio client or API interceptor set up | `core/network/` | ✅ Fixed |
 | Help & Support screen (screen 25) missing from router | `app_router.dart` | Medium |
@@ -324,9 +360,9 @@ All BLoC folders exist (scaffold only), but **zero BLoC files have been written*
 11. Add auth guard to router (redirect unauthenticated users)
 
 ### Step 4 — Expense BLoC + Data Layer
-12. Create `ExpenseLocalDataSource` + `ExpenseRemoteDataSource`
-13. Create `ExpenseRepositoryImpl`
-14. Create `ExpenseBloc` + `ExpenseFormBloc`
+12. ~~Create `ExpenseLocalDataSource` + `ExpenseRemoteDataSource`~~ ✅
+13. ~~Create `ExpenseRepositoryImpl`~~ ✅
+14. ~~Create `ExpenseBloc` + `ExpenseFormBloc` + `ExpenseDetailsBloc`~~ ✅
 15. Wire into Expense List, Add/Edit, Details screens
 
 ### Step 5 — Receipt + AI Flow
@@ -415,11 +451,39 @@ lib/
     ├── dashboard/
     │   └── presentation/pages/dashboard_page.dart      ✅
     ├── expenses/
-    │   ├── domain/entities/expense.dart                ✅
-    │   └── presentation/pages/
-    │       ├── expense_list_page.dart                  ✅
-    │       ├── expense_details_page.dart               ✅
-    │       └── add_expense_page.dart                   ✅
+    │   ├── data/
+    │   │   ├── datasources/
+    │   │   │   ├── expense_local_data_source.dart      ✅
+    │   │   │   └── expense_remote_data_source.dart     ✅
+    │   │   ├── models/
+    │   │   │   └── expense_model.dart                  ✅
+    │   │   └── repositories/
+    │   │       └── expense_repository_impl.dart        ✅
+    │   ├── domain/
+    │   │   ├── entities/expense.dart                   ✅
+    │   │   ├── repositories/expense_repository.dart    ✅
+    │   │   └── usecases/                               ✅
+    │   │       ├── get_expenses_usecase.dart           ✅
+    │   │       ├── get_expense_by_id_usecase.dart      ✅
+    │   │       ├── search_expenses_usecase.dart        ✅
+    │   │       ├── create_expense_usecase.dart         ✅
+    │   │       ├── update_expense_usecase.dart         ✅
+    │   │       └── delete_expense_usecase.dart         ✅
+    │   └── presentation/
+    │       ├── bloc/                                   ✅
+    │       │   ├── expense_bloc.dart                   ✅
+    │       │   ├── expense_event.dart                  ✅
+    │       │   ├── expense_state.dart                  ✅
+    │       │   ├── expense_form_bloc.dart              ✅
+    │       │   ├── expense_form_event.dart             ✅
+    │       │   ├── expense_form_state.dart             ✅
+    │       │   ├── expense_details_bloc.dart           ✅
+    │       │   ├── expense_details_event.dart          ✅
+    │       │   └── expense_details_state.dart          ✅
+    │       └── pages/
+    │           ├── expense_list_page.dart              ✅
+    │           ├── expense_details_page.dart           ✅
+    │           └── add_expense_page.dart               ✅
     ├── receipt_scanner/
     │   └── presentation/pages/
     │       ├── receipt_scanner_page.dart               ✅
@@ -453,16 +517,12 @@ core/
 
 features/
 ├── auth/                                              ✅
+├── expenses/                                          ✅
+│   └── presentation/widgets/
 ├── dashboard/
 │   ├── data/                ← full data layer
 │   ├── domain/              ← full domain layer
 │   ├── presentation/bloc/   ← DashboardBloc
-│   └── presentation/widgets/
-├── expenses/
-│   ├── data/                ← full data layer
-│   ├── domain/repositories/ ← ExpenseRepository
-│   ├── domain/usecases/     ← CRUD use cases
-│   ├── presentation/bloc/   ← ExpenseBloc, ExpenseFormBloc, ExpenseDetailsBloc
 │   └── presentation/widgets/
 ├── categories/
 │   ├── data/                ← full data layer

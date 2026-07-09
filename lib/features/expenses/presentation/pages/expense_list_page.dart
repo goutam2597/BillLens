@@ -212,7 +212,7 @@ class _ExpenseListPageState extends State<ExpenseListPage> {
       appBar: _buildAppBar(
           isDark, surfaceColor, textPrimary, textSecondary, borderColor),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go(AppRoutes.addExpense),
+        onPressed: () => context.push(AppRoutes.addExpense),
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
@@ -269,7 +269,7 @@ class _ExpenseListPageState extends State<ExpenseListPage> {
                             textPrimary: textPrimary,
                             textSecondary: textSecondary,
                             borderColor: borderColor,
-                            onTap: () => context.go('/expenses/${e.id}'),
+                            onTap: () => context.push('/expenses/${e.id}'),
                           ),
                         );
                       },
@@ -684,7 +684,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => context.go(AppRoutes.addExpense),
+              onPressed: () => context.push(AppRoutes.addExpense),
               icon: const Icon(Icons.add_rounded, size: 18),
               label: Text(
                 'Add Expense',

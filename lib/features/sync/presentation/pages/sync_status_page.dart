@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 
 // ---------------------------------------------------------------------------
 // Sync item model
@@ -166,7 +167,7 @@ class _SyncStatusPageState extends State<SyncStatusPage>
               color: textPrimary, size: 20),
           onPressed: () {
             if (context.canPop()) {
-              context.pop();
+              context.safePop(AppRoutes.profile);
             } else {
               context.go(AppRoutes.dashboard);
             }

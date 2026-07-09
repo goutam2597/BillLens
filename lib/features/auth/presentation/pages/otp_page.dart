@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 
 class OtpPage extends StatefulWidget {
   const OtpPage({super.key});
@@ -148,7 +149,7 @@ class _OtpPageState extends State<OtpPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: textPrimary, size: 20),
-          onPressed: () => context.pop(),
+          onPressed: () => context.safePop(AppRoutes.register),
         ),
       ),
       body: SafeArea(

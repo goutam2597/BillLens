@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
@@ -85,7 +86,7 @@ class _RegisterPageState extends State<RegisterPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: textPrimary, size: 20),
-          onPressed: () => context.pop(),
+          onPressed: () => context.safePop(AppRoutes.welcome),
         ),
       ),
       body: BlocConsumer<AuthBloc, AuthState>(
@@ -330,7 +331,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     // Login link
                     Center(
                       child: GestureDetector(
-                        onTap: () => context.go(AppRoutes.login),
+                        onTap: () => context.push(AppRoutes.login),
                         child: RichText(
                           text: TextSpan(
                             text: 'Already have an account? ',

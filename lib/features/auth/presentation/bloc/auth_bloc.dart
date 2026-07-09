@@ -21,7 +21,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     this._loginUseCase,
     this._registerUseCase,
     this._logoutUseCase,
-  ) : super(AuthInitial()) {
+  ) : super(const AuthInitial()) {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<LoginEvent>(_onLogin);
     on<RegisterEvent>(_onRegister);
@@ -32,15 +32,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     CheckAuthStatus event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(const AuthLoading());
     final result = await _authRepository.getCurrentUser();
     result.fold(
-      (failure) => emit(Unauthenticated()),
+      (failure) => emit(const Unauthenticated()),
       (user) {
         if (user != null) {
           emit(Authenticated(user));
         } else {
-          emit(Unauthenticated());
+          emit(const Unauthenticated());
         }
       },
     );
@@ -50,7 +50,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LoginEvent event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(const AuthLoading());
     final result = await _loginUseCase(
       LoginParams(email: event.email, password: event.password),
     );
@@ -64,7 +64,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     RegisterEvent event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(const AuthLoading());
     final result = await _registerUseCase(
       RegisterParams(
         name: event.name,
@@ -84,11 +84,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LogoutEvent event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
-    final result = await _logoutUseCase(NoParams());
+    emit(const AuthLoading());
+    final result = await _logoutUseCase(const NoParams());
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (_) => emit(Unauthenticated()),
+      (_) => emit(const Unauthenticated()),
     );
   }
 }

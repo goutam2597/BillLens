@@ -53,7 +53,7 @@ class MainShell extends StatelessWidget {
                 // Centre Scan FAB
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => context.go(AppRoutes.receiptScanner),
+                    onTap: () => context.push(AppRoutes.receiptScanner),
                     child: Center(
                       child: Container(
                         width: 56,

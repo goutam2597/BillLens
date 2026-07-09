@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 
 // ---------------------------------------------------------------------------
@@ -175,7 +177,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
         ),
       ),
     );
-    Navigator.of(context).pop();
+    context.safePop(AppRoutes.expenseList);
   }
 
   @override
@@ -199,7 +201,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: Icon(Icons.close_rounded, color: textPrimary, size: 22),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.safePop(AppRoutes.expenseList),
         ),
         title: Text(
           'Add Expense',

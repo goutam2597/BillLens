@@ -62,7 +62,7 @@ class AppRouter {
 
       // Main tab shell: Home, Expenses, Analytics, Profile.
       // The persistent bottom navigation bar lives in [MainShell].
-      StatefulShellRoute(
+      StatefulShellRoute.indexedStack(
         branches: [
           StatefulShellBranch(
             routes: [

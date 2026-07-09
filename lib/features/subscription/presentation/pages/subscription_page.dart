@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 
 class SubscriptionPage extends StatefulWidget {
   const SubscriptionPage({super.key});
@@ -44,7 +46,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.close, color: textColor),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.safePop(AppRoutes.profile),
         ),
         title: Text(
           'Upgrade to Premium',

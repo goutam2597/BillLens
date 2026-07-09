@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Category model
@@ -125,7 +127,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Color(0xFF0F172A), size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.safePop(AppRoutes.dashboard),
         ),
         title: Text(
           'Categories',

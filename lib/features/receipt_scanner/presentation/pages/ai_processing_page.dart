@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ class _AiProcessingPageState extends State<AiProcessingPage>
         // All done – navigate after a brief pause
         Timer(const Duration(milliseconds: 600), () {
           if (mounted) {
-            Navigator.of(context).pushReplacementNamed('/scanner/result');
+            context.pushReplacement('/scanner/result');
           }
         });
       }

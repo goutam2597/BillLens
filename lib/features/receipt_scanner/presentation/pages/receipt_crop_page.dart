@@ -1,8 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 
 class ReceiptCropPage extends StatefulWidget {
-  const ReceiptCropPage({super.key});
+  final String? imagePath;
+
+  const ReceiptCropPage({super.key, this.imagePath});
 
   @override
   State<ReceiptCropPage> createState() => _ReceiptCropPageState();
@@ -11,6 +18,8 @@ class ReceiptCropPage extends StatefulWidget {
 class _ReceiptCropPageState extends State<ReceiptCropPage> {
   @override
   Widget build(BuildContext context) {
+    final imagePath = widget.imagePath;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -20,7 +29,7 @@ class _ReceiptCropPageState extends State<ReceiptCropPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Color(0xFF0F172A), size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.safePop(AppRoutes.receiptScanner),
         ),
         title: Text(
           'Crop Receipt',
@@ -49,16 +58,23 @@ class _ReceiptCropPageState extends State<ReceiptCropPage> {
                 borderRadius: BorderRadius.circular(16),
                 child: Stack(
                   children: [
-                    // Gray placeholder
-                    Container(
-                      width: double.infinity,
-                      color: const Color(0xFFE2E8F0),
-                      child: const Center(
-                        child: Icon(
-                          Icons.receipt_long_rounded,
-                          size: 80,
-                          color: Color(0xFF94A3B8),
-                        ),
+                    // Receipt image or placeholder
+                    Positioned.fill(
+                      child: Container(
+                        width: double.infinity,
+                        color: const Color(0xFFE2E8F0),
+                        child: imagePath != null
+                            ? Image.file(
+                                File(imagePath),
+                                fit: BoxFit.contain,
+                              )
+                            : const Center(
+                                child: Icon(
+                                  Icons.receipt_long_rounded,
+                                  size: 80,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                              ),
                       ),
                     ),
 
@@ -161,8 +177,7 @@ class _ReceiptCropPageState extends State<ReceiptCropPage> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: ElevatedButton(
-                          onPressed: () => Navigator.of(context)
-                              .pushNamed('/scanner/processing'),
+                          onPressed: () => context.push('/scanner/processing'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -187,7 +202,7 @@ class _ReceiptCropPageState extends State<ReceiptCropPage> {
                 const SizedBox(height: 8),
                 // Retake
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => context.safePop(AppRoutes.receiptScanner),
                   child: Text(
                     'Retake',
                     style: GoogleFonts.outfit(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 
 // ---------------------------------------------------------------------------
@@ -46,7 +47,7 @@ class ExpenseDetailsPage extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded,
               color: Colors.white, size: 20),
-          onPressed: () => context.pop(),
+          onPressed: () => context.safePop(AppRoutes.expenseList),
         ),
         title: Text(
           d['vendor']!,
@@ -168,7 +169,7 @@ class ExpenseDetailsPage extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              context.pop();
+              context.safePop(AppRoutes.expenseList);
             },
             child: Text(
               'Delete',

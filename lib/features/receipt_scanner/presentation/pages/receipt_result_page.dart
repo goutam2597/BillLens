@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/router/context_ext.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Receipt Result Page
@@ -71,7 +74,7 @@ class _ReceiptResultPageState extends State<ReceiptResultPage>
       ),
     );
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) Navigator.of(context).pushReplacementNamed('/dashboard');
+      if (mounted) context.go('/dashboard');
     });
   }
 
@@ -86,7 +89,7 @@ class _ReceiptResultPageState extends State<ReceiptResultPage>
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Color(0xFF0F172A), size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.safePop(AppRoutes.dashboard),
         ),
         title: Text(
           'Receipt Extracted',
@@ -403,8 +406,7 @@ class _ReceiptResultPageState extends State<ReceiptResultPage>
             const SizedBox(height: 6),
             // Retake
             TextButton.icon(
-              onPressed: () =>
-                  Navigator.of(context).pushReplacementNamed('/scanner'),
+              onPressed: () => context.go('/scanner'),
               icon: const Icon(Icons.camera_alt_outlined,
                   size: 16, color: Color(0xFF64748B)),
               label: Text(
@@ -435,7 +437,7 @@ class _FieldCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
