@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
 
 class OtpPage extends StatefulWidget {
   const OtpPage({super.key});
@@ -144,8 +145,9 @@ class _OtpPageState extends State<OtpPage> {
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: bgColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
+        elevation: 2,
+        scrolledUnderElevation: 4,
+        shadowColor: Colors.black.withValues(alpha: 0.18),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: textPrimary, size: 20),
@@ -154,11 +156,11 @@ class _OtpPageState extends State<OtpPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
               // Email icon
               Container(
@@ -180,10 +182,10 @@ class _OtpPageState extends State<OtpPage> {
               Text(
                 'Verify Email',
                 style: GoogleFonts.outfit(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
                   color: textPrimary,
-                  letterSpacing: -0.3,
+                  height: 1.2,
                 ),
               ),
 
@@ -194,6 +196,7 @@ class _OtpPageState extends State<OtpPage> {
                 style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: textSecondary,
+                  height: 1.5,
                 ),
               ),
 
@@ -221,16 +224,22 @@ class _OtpPageState extends State<OtpPage> {
 
               // OTP boxes
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(
                   _otpLength,
-                  (index) => _OtpBox(
-                    controller: _controllers[index],
-                    focusNode: _focusNodes[index],
-                    hasError: _hasError,
-                    isDark: isDark,
-                    onChanged: (v) => _onBoxChanged(v, index),
-                    onKeyEvent: (e) => _onBoxKeyEvent(e, index),
+                  (index) => Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: index == _otpLength - 1 ? 0 : 8,
+                      ),
+                      child: _OtpBox(
+                        controller: _controllers[index],
+                        focusNode: _focusNodes[index],
+                        hasError: _hasError,
+                        isDark: isDark,
+                        onChanged: (v) => _onBoxChanged(v, index),
+                        onKeyEvent: (e) => _onBoxKeyEvent(e, index),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -262,7 +271,12 @@ class _OtpPageState extends State<OtpPage> {
               const SizedBox(height: 36),
 
               // Verify button
-              _VerifyButton(isLoading: _isLoading, onTap: _handleVerify),
+              PrimaryButton(
+                text: 'Verify',
+                isLoading: _isLoading,
+                onPressed: _handleVerify,
+                height: 54,
+              ),
 
               const SizedBox(height: 28),
 
@@ -381,7 +395,6 @@ class _OtpBox extends StatelessWidget {
       focusNode: FocusNode(),
       onKeyEvent: onKeyEvent,
       child: SizedBox(
-        width: 46,
         height: 56,
         child: TextFormField(
           controller: controller,
@@ -415,57 +428,6 @@ class _OtpBox extends StatelessWidget {
             ),
           ),
           onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Verify button ─────────────────────────────────────────────────────────────
-
-class _VerifyButton extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback onTap;
-
-  const _VerifyButton({required this.isLoading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: isLoading
-              ? const LinearGradient(
-                  colors: [Color(0xFF93C5FD), Color(0xFF60A5FA)])
-              : const LinearGradient(
-                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isLoading ? [] : AppColors.primaryShadow,
-        ),
-        child: Center(
-          child: isLoading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Text(
-                  'Verify',
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
         ),
       ),
     );

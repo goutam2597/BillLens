@@ -1,14 +1,22 @@
-import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AI Processing Page
-// ─────────────────────────────────────────────────────────────────────────────
+import '../../../../core/di/injection.dart';
+import '../../../../core/router/app_routes.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_widgets.dart';
+import '../bloc/receipt_processing_bloc.dart';
+import '../bloc/receipt_processing_event.dart';
+import '../bloc/receipt_processing_state.dart';
+
 class AiProcessingPage extends StatefulWidget {
-  const AiProcessingPage({super.key});
+  final String imagePath;
+
+  const AiProcessingPage({super.key, required this.imagePath});
 
   @override
   State<AiProcessingPage> createState() => _AiProcessingPageState();
@@ -16,304 +24,556 @@ class AiProcessingPage extends StatefulWidget {
 
 class _AiProcessingPageState extends State<AiProcessingPage>
     with TickerProviderStateMixin {
-  // Processing steps
-  static const _steps = [
-    'Image Processing',
-    'OCR Reading',
-    'Extracting Vendor',
-    'Extracting Amount',
-    'AI Categorization',
-  ];
+  late final ReceiptProcessingBloc _bloc;
+  late final AnimationController _entryController;
+  late final AnimationController _scanController;
 
-  // 0 = pending, 1 = active, 2 = done
-  final List<int> _stepStates = List.filled(5, 0);
   int _currentStep = 0;
-  Timer? _timer;
-
-  // Gradient animation controller
-  late final AnimationController _rotationController;
-  // Pulse animation controller
-  late final AnimationController _pulseController;
-  late final Animation<double> _pulseAnimation;
+  static const int _totalSteps = 6;
+  static const _stepLabels = [
+    'Prepare image',
+    'Read receipt text',
+    'Secure upload',
+    'Analyze details',
+    'Extract expense data',
+    'Assign category',
+  ];
 
   @override
   void initState() {
     super.initState();
-
-    _rotationController = AnimationController(
+    _bloc = getIt<ReceiptProcessingBloc>()
+      ..add(StartReceiptProcessing(widget.imagePath));
+    _entryController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
-
-    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+    )..forward();
+    _scanController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-
-    _pulseAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    // Kick off the first step immediately
-    _advanceStep();
   }
 
-  void _advanceStep() {
-    if (!mounted) return;
-    if (_currentStep >= _steps.length) return;
-
-    // Mark current step as active
-    setState(() => _stepStates[_currentStep] = 1);
-
-    _timer = Timer(const Duration(milliseconds: 700), () {
-      if (!mounted) return;
-      setState(() => _stepStates[_currentStep] = 2);
-      _currentStep++;
-
-      if (_currentStep < _steps.length) {
-        _advanceStep();
-      } else {
-        // All done – navigate after a brief pause
-        Timer(const Duration(milliseconds: 600), () {
-          if (mounted) {
-            context.pushReplacement('/scanner/result');
-          }
-        });
-      }
-    });
+  void _retry() {
+    setState(() => _currentStep = 0);
+    _scanController.repeat(reverse: true);
+    _bloc.add(StartReceiptProcessing(widget.imagePath));
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _rotationController.dispose();
-    _pulseController.dispose();
+    _entryController.dispose();
+    _scanController.dispose();
+    _bloc.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // ── Animated gradient orb ───────────────────────────────
-                ScaleTransition(
-                  scale: _pulseAnimation,
-                  child: AnimatedBuilder(
-                    animation: _rotationController,
-                    builder: (context, child) {
-                      return Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: SweepGradient(
-                            startAngle: 0,
-                            endAngle: 2 * 3.14159265,
-                            transform: GradientRotation(
-                                _rotationController.value * 2 * 3.14159265),
-                            colors: const [
-                              Color(0xFF2563EB),
-                              Color(0xFF10B981),
-                              Color(0xFF7C3AED),
-                              Color(0xFF2563EB),
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2563EB)
-                                  .withValues(alpha: 0.35),
-                              blurRadius: 32,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.document_scanner_outlined,
-                            color: Colors.white,
-                            size: 48,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+    final colorScheme = Theme.of(context).colorScheme;
 
-                const SizedBox(height: 36),
+    return BlocProvider.value(
+      value: _bloc,
+      child: BlocConsumer<ReceiptProcessingBloc, ReceiptProcessingState>(
+        listener: (context, state) {
+          if (state is ProcessingStep) {
+            setState(() {
+              _currentStep = (state.stepIndex - 1).clamp(0, _totalSteps - 1);
+            });
+          } else if (state is ProcessingSuccess) {
+            _scanController.stop();
+            context.pushReplacement(AppRoutes.receiptResult, extra: state);
+          } else if (state is ProcessingError) {
+            _scanController.stop();
+          }
+        },
+        builder: (context, state) {
+          final hasError = state is ProcessingError;
+          final progress = hasError
+              ? _currentStep / _totalSteps
+              : ((_currentStep + 1) / _totalSteps).clamp(0.0, 1.0);
+          final currentLabel = state is ProcessingStep
+              ? state.label
+              : hasError
+                  ? 'We could not read this receipt'
+                  : 'Preparing your receipt';
 
-                // ── Title ───────────────────────────────────────────────
-                Text(
-                  'Analyzing Receipt...',
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // ── Subtitle ────────────────────────────────────────────
-                Text(
-                  'Our AI is extracting your expense data',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                // ── Steps list ──────────────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Column(
-                    children: List.generate(_steps.length, (index) {
-                      return AnimatedOpacity(
-                        duration: const Duration(milliseconds: 400),
-                        opacity: _stepStates[index] > 0 ? 1.0 : 0.3,
-                        child: _StepRow(
-                          label: _steps[index],
-                          state: _stepStates[index],
-                          isLast: index == _steps.length - 1,
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-              ],
+          return Scaffold(
+            backgroundColor: colorScheme.surfaceContainerLowest,
+            appBar: AppPageBar(
+              title: 'Receipt analysis',
+              leading: IconButton(
+                tooltip: 'Close analysis',
+                onPressed: () => context.go(AppRoutes.receiptScanner),
+                icon: const Icon(Icons.close_rounded),
+              ),
             ),
-          ),
+            body: SafeArea(
+              top: false,
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: _entryController,
+                  curve: Curves.easeOut,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _ReceiptPreview(
+                            imagePath: widget.imagePath,
+                            scanAnimation: _scanController,
+                            hasError: hasError,
+                          ),
+                          const SizedBox(height: 24),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            child: hasError
+                                ? _FailurePanel(
+                                    key: const ValueKey('failure'),
+                                    message: state.message,
+                                    onRetake: () =>
+                                        context.go(AppRoutes.receiptScanner),
+                                    onRetry: _retry,
+                                    onClose: () =>
+                                        context.go(AppRoutes.dashboard),
+                                  )
+                                : _ProgressPanel(
+                                    key: const ValueKey('progress'),
+                                    currentLabel: currentLabel,
+                                    currentStep: _currentStep,
+                                    progress: progress,
+                                    colorScheme: colorScheme,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ReceiptPreview extends StatelessWidget {
+  const _ReceiptPreview({
+    required this.imagePath,
+    required this.scanAnimation,
+    required this.hasError,
+  });
+
+  final String imagePath;
+  final Animation<double> scanAnimation;
+  final bool hasError;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: SizedBox(
+        width: 190,
+        height: 230,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 28,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.file(
+                  File(imagePath),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Center(
+                    child: Icon(
+                      Icons.receipt_long_outlined,
+                      size: 72,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (!hasError)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedBuilder(
+                    animation: scanAnimation,
+                    builder: (context, _) => Stack(
+                      children: [
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: scanAnimation.value * 226,
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: AppColors.accent,
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      AppColors.accent.withValues(alpha: 0.65),
+                                  blurRadius: 14,
+                                  spreadRadius: 3,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              right: -14,
+              bottom: -14,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: hasError ? colorScheme.error : AppColors.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: colorScheme.surfaceContainerLowest,
+                    width: 5,
+                  ),
+                ),
+                child: Icon(
+                  hasError ? Icons.priority_high_rounded : Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Step Row Widget
-// ─────────────────────────────────────────────────────────────────────────────
-class _StepRow extends StatelessWidget {
-  final String label;
-  final int state; // 0 = pending, 1 = active, 2 = done
-  final bool isLast;
-
-  const _StepRow({
-    required this.label,
-    required this.state,
-    required this.isLast,
+class _ProgressPanel extends StatelessWidget {
+  const _ProgressPanel({
+    super.key,
+    required this.currentLabel,
+    required this.currentStep,
+    required this.progress,
+    required this.colorScheme,
   });
+
+  final String currentLabel;
+  final int currentStep;
+  final double progress;
+  final ColorScheme colorScheme;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-      child: Row(
-        children: [
-          // Status icon
-          _StepIcon(state: state),
-          const SizedBox(width: 14),
-          // Label
-          Expanded(
-            child: Text(
-              label,
+    return Column(
+      children: [
+        Text(
+          currentLabel,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'BillLens is organizing the important details for you.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            height: 1.45,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 24),
+        AppGroupedSurface(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Analysis progress',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${(progress * 100).round()}%',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  value: progress,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                ),
+              ),
+              const SizedBox(height: 22),
+              ...List.generate(_AiProcessingPageState._stepLabels.length,
+                  (index) {
+                final complete = index < currentStep;
+                final active = index == currentStep;
+                final isLast =
+                    index == _AiProcessingPageState._stepLabels.length - 1;
+                return _TimelineStep(
+                  label: _AiProcessingPageState._stepLabels[index],
+                  complete: complete,
+                  active: active,
+                  isLast: isLast,
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline_rounded,
+              size: 15,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Your receipt is processed securely',
               style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: state == 2 ? FontWeight.w600 : FontWeight.w400,
-                color: state == 2
-                    ? const Color(0xFF0F172A)
-                    : state == 1
-                        ? const Color(0xFF2563EB)
-                        : const Color(0xFF94A3B8),
+                fontSize: 12,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TimelineStep extends StatelessWidget {
+  const _TimelineStep({
+    required this.label,
+    required this.complete,
+    required this.active,
+    required this.isLast,
+  });
+
+  final String label;
+  final bool complete;
+  final bool active;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final markerColor = complete
+        ? AppColors.accent
+        : active
+            ? colorScheme.primary
+            : colorScheme.outlineVariant;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 24,
+            child: Column(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color:
+                        complete || active ? markerColor : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: markerColor, width: 1.5),
+                  ),
+                  child: complete
+                      ? const Icon(Icons.check_rounded,
+                          size: 13, color: Colors.white)
+                      : active
+                          ? const Center(
+                              child: SizedBox(
+                                width: 6,
+                                height: 6,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null,
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 1.5,
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      color: complete
+                          ? AppColors.accent.withValues(alpha: 0.45)
+                          : colorScheme.outlineVariant,
+                    ),
+                  ),
+              ],
+            ),
           ),
-          // Duration badge when done
-          if (state == 2)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 17),
               child: Text(
-                'Done',
+                label,
                 style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF10B981),
+                  fontSize: 14,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  color: complete || active
+                      ? colorScheme.onSurface
+                      : colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Step Icon Widget
-// ─────────────────────────────────────────────────────────────────────────────
-class _StepIcon extends StatelessWidget {
-  final int state;
+class _FailurePanel extends StatelessWidget {
+  const _FailurePanel({
+    super.key,
+    required this.message,
+    required this.onRetake,
+    required this.onRetry,
+    required this.onClose,
+  });
 
-  const _StepIcon({required this.state});
+  final String message;
+  final VoidCallback onRetake;
+  final VoidCallback onRetry;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    if (state == 2) {
-      // Done – green checkmark
-      return Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: const Color(0xFF10B981),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF10B981).withValues(alpha: 0.3),
-              blurRadius: 6,
-              spreadRadius: 0,
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Text(
+          'We could not read this receipt',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            height: 1.5,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 24),
+        AppGroupedSurface(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.lightbulb_outline_rounded,
+                  color: colorScheme.onErrorContainer,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  'Use a clear, well-lit photo with the full receipt visible.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                text: 'Retake',
+                height: 50,
+                onPressed: onRetake,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: PrimaryButton(
+                text: 'Try again',
+                height: 50,
+                onPressed: onRetry,
+              ),
             ),
           ],
         ),
-        child: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
-      );
-    } else if (state == 1) {
-      // Active – spinner
-      return SizedBox(
-        width: 28,
-        height: 28,
-        child: CircularProgressIndicator(
-          strokeWidth: 2.5,
-          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
-          backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.15),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: onClose,
+          child: const Text('Close'),
         ),
-      );
-    } else {
-      // Pending – gray circle
-      return Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFCBD5E1), width: 2),
-        ),
-      );
-    }
+      ],
+    );
   }
 }

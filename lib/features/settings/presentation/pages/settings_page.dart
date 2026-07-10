@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/widgets/app_widgets.dart';
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -106,40 +108,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textColor =
-        isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final subTextColor =
-        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final borderColor =
-        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: surfaceColor,
-        elevation: 0,
-        title: Text(
-          'Settings',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-          ),
-        ),
+      backgroundColor: colorScheme.surfaceContainerLowest,
+      appBar: AppPageBar(
+        title: 'Settings',
         actions: [
           TextButton(
             onPressed: _showSavedSnackBar,
-            child: Text(
-              'Save',
-              style: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF2563EB),
-              ),
-            ),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -148,11 +126,10 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Appearance Section
-            _buildSectionLabel('Appearance', textColor),
-            _buildCard(
-              surfaceColor: surfaceColor,
-              borderColor: borderColor,
+            const AppSectionHeader(title: 'Appearance'),
+            const SizedBox(height: 8),
+            AppGroupedSurface(
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -163,7 +140,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: GoogleFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: textColor,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -181,10 +158,10 @@ class _SettingsPageState extends State<SettingsPage> {
                               setState(() => _themeIndex = index),
                           borderRadius: BorderRadius.circular(10),
                           selectedColor: Colors.white,
-                          fillColor: const Color(0xFF2563EB),
-                          color: subTextColor,
-                          borderColor: borderColor,
-                          selectedBorderColor: const Color(0xFF2563EB),
+                          fillColor: colorScheme.primary,
+                          color: colorScheme.onSurfaceVariant,
+                          borderColor: colorScheme.outlineVariant,
+                          selectedBorderColor: colorScheme.primary,
                           constraints: BoxConstraints(
                             minWidth: (constraints.maxWidth - 2) / 3,
                             minHeight: 40,
@@ -202,106 +179,83 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                     ),
                   ),
-                  _buildDivider(borderColor),
+                  _buildDivider(colorScheme.outlineVariant),
                   _buildDropdownTile(
                     label: 'Language',
                     value: _language,
                     items: _languages,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
-                    surfaceColor: surfaceColor,
                     onChanged: (val) => setState(() => _language = val!),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // Preferences Section
-            _buildSectionLabel('Preferences', textColor),
-            _buildCard(
-              surfaceColor: surfaceColor,
-              borderColor: borderColor,
+            const AppSectionHeader(title: 'Preferences'),
+            const SizedBox(height: 8),
+            AppGroupedSurface(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   _buildDropdownTile(
                     label: 'Default Currency',
                     value: _currency,
                     items: _currencies,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
-                    surfaceColor: surfaceColor,
                     onChanged: (val) => setState(() => _currency = val!),
                   ),
-                  _buildDivider(borderColor),
+                  _buildDivider(colorScheme.outlineVariant),
                   _buildDropdownTile(
                     label: 'Date Format',
                     value: _dateFormat,
                     items: _dateFormats,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
-                    surfaceColor: surfaceColor,
                     onChanged: (val) => setState(() => _dateFormat = val!),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // Notifications Section
-            _buildSectionLabel('Notifications', textColor),
-            _buildCard(
-              surfaceColor: surfaceColor,
-              borderColor: borderColor,
+            const AppSectionHeader(title: 'Notifications'),
+            const SizedBox(height: 8),
+            AppGroupedSurface(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   _buildSwitchTile(
                     label: 'Expense Reminders',
                     subtitle: 'Get reminded to log expenses',
                     value: _expenseReminders,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
                     onChanged: (val) => setState(() => _expenseReminders = val),
                   ),
-                  _buildDivider(borderColor),
+                  _buildDivider(colorScheme.outlineVariant),
                   _buildSwitchTile(
                     label: 'Sync Alerts',
                     subtitle: 'Notifications when sync completes',
                     value: _syncAlerts,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
                     onChanged: (val) => setState(() => _syncAlerts = val),
                   ),
-                  _buildDivider(borderColor),
+                  _buildDivider(colorScheme.outlineVariant),
                   _buildSwitchTile(
                     label: 'Weekly Reports',
                     subtitle: 'Receive weekly expense summary',
                     value: _weeklyReports,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
                     onChanged: (val) => setState(() => _weeklyReports = val),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // Privacy Section
-            _buildSectionLabel('Privacy', textColor),
-            _buildCard(
-              surfaceColor: surfaceColor,
-              borderColor: borderColor,
+            const AppSectionHeader(title: 'Privacy'),
+            const SizedBox(height: 8),
+            AppGroupedSurface(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   _buildSwitchTile(
                     label: 'Biometric Lock',
                     subtitle: 'Use fingerprint / face ID to unlock',
                     value: _biometricLock,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
                     onChanged: (val) => setState(() => _biometricLock = val),
                   ),
-                  _buildDivider(borderColor),
+                  _buildDivider(colorScheme.outlineVariant),
                   ListTile(
                     title: Text(
                       'Clear Local Data',
@@ -315,7 +269,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       'Delete all cached data from this device',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        color: subTextColor,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                     trailing: const Icon(Icons.delete_outline,
@@ -326,73 +280,49 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Sync Section
-            _buildSectionLabel('Sync', textColor),
-            _buildCard(
-              surfaceColor: surfaceColor,
-              borderColor: borderColor,
+            const AppSectionHeader(title: 'Sync'),
+            const SizedBox(height: 8),
+            AppGroupedSurface(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   _buildSwitchTile(
                     label: 'Auto Sync',
                     subtitle: 'Automatically sync data in background',
                     value: _autoSync,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
                     onChanged: (val) => setState(() => _autoSync = val),
                   ),
-                  _buildDivider(borderColor),
+                  _buildDivider(colorScheme.outlineVariant),
                   _buildDropdownTile(
                     label: 'Sync Interval',
                     value: _syncInterval,
                     items: _syncIntervals,
-                    textColor: textColor,
-                    subTextColor: subTextColor,
-                    surfaceColor: surfaceColor,
                     onChanged: _autoSync
                         ? (val) => setState(() => _syncInterval = val!)
                         : null,
                   ),
-                  _buildDivider(borderColor),
+                  _buildDivider(colorScheme.outlineVariant),
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Syncing...',
-                                style: GoogleFonts.outfit(color: Colors.white),
-                              ),
-                              backgroundColor: const Color(0xFF2563EB),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              margin: const EdgeInsets.all(16),
+                    child: PrimaryButton(
+                      text: 'Sync now',
+                      height: 52,
+                      icon: const Icon(Icons.sync_rounded, color: Colors.white),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Syncing...',
+                              style: GoogleFonts.outfit(color: Colors.white),
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.sync, color: Colors.white),
-                        label: Text(
-                          'Sync Now',
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            backgroundColor: const Color(0xFF2563EB),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            margin: const EdgeInsets.all(16),
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -405,66 +335,31 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSectionLabel(String label, Color textColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        label.toUpperCase(),
-        style: GoogleFonts.outfit(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: textColor.withValues(alpha: 0.5),
-          letterSpacing: 1.0,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCard({
-    required Color surfaceColor,
-    required Color borderColor,
-    required Widget child,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
   Widget _buildSwitchTile({
     required String label,
     required String subtitle,
     required bool value,
-    required Color textColor,
-    required Color subTextColor,
     required ValueChanged<bool> onChanged,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SwitchListTile.adaptive(
       title: Text(
         label,
         style: GoogleFonts.outfit(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: textColor,
+          color: colorScheme.onSurface,
         ),
       ),
       subtitle: Text(
         subtitle,
-        style: GoogleFonts.outfit(fontSize: 12, color: subTextColor),
+        style: GoogleFonts.outfit(
+          fontSize: 12,
+          color: colorScheme.onSurfaceVariant,
+        ),
       ),
       value: value,
-      activeThumbColor: const Color(0xFF2563EB),
+      activeThumbColor: colorScheme.primary,
       onChanged: onChanged,
     );
   }
@@ -473,11 +368,9 @@ class _SettingsPageState extends State<SettingsPage> {
     required String label,
     required String value,
     required List<String> items,
-    required Color textColor,
-    required Color subTextColor,
-    required Color surfaceColor,
     required ValueChanged<String?>? onChanged,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -488,18 +381,18 @@ class _SettingsPageState extends State<SettingsPage> {
             style: GoogleFonts.outfit(
               fontSize: 15,
               fontWeight: FontWeight.w500,
-              color: textColor,
+              color: colorScheme.onSurface,
             ),
           ),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               isDense: true,
-              dropdownColor: surfaceColor,
+              dropdownColor: colorScheme.surface,
               style: GoogleFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF2563EB),
+                color: colorScheme.primary,
               ),
               onChanged: onChanged,
               items: items.map((item) {

@@ -2,7 +2,7 @@
 
 **App:** Smart Receipt Scanner AI App  
 **Stack:** Flutter + BLoC + PHP/MySQL  
-**As of:** July 9, 2026
+**As of:** July 10, 2026
 
 ---
 
@@ -11,17 +11,94 @@
 | Phase | Description | Status | % Done |
 |---|---|---|---|
 | Phase 1 | Flutter UI Design (all screens) | ✅ **Complete** | 100% |
-| Phase 2 | BLoC Architecture Setup | 🟢 In Progress | 45% |
-| Phase 3 | Offline Database (Drift/SQLite) | 🟢 In Progress | 35% |
-| Phase 4 | Receipt Scanner + OCR + AI Flow | 🟡 In Progress | 15% |
-| Phase 5 | PHP/MySQL Backend | 🔴 Not Started | 0% |
-| Phase 6 | Sync System | 🔴 Not Started | 0% |
-| Phase 7 | Ads + Subscription | 🔴 Not Started | 0% |
+| Phase 2 | BLoC Architecture Setup | ✅ **Complete** | 100% |
+| Phase 3 | Offline Database (Drift/SQLite) | ✅ **Complete** | 95% |
+| Phase 4 | Receipt Scanner + OCR + AI Flow | 🟢 In Progress | 65% |
+| Phase 5 | PHP/MySQL Backend | ✅ **Complete** | 100% |
+| Phase 6 | Sync System | 🟢 In Progress | 60% |
+| Phase 7 | Ads + Subscription | 🟢 In Progress | 50% |
 | Phase 8 | Testing + Release | 🔴 Not Started | 0% |
 
 ---
 
-## ✅ Recent Fixes (July 9, 2026)
+## ✅ July 10, 2026 — Major Completion Update
+
+All remaining BLoCs, domain layers, data layers, backend, and Screen 25 built. `dart analyze` passes with zero issues.
+
+### New Files Built (60+ files)
+
+#### BLoCs (14 new — all 14 now complete)
+- `SplashBloc` — events, states, bloc with auth check + onboarding check
+- `OnboardingCubit` — completes onboarding, saves to SharedPreferences
+- `OtpBloc` — verify + resend OTP via AuthRepository
+- `DashboardBloc` — loads monthly total, recent expenses, sync count from ExpenseRepository
+- `CategoryBloc` — full CRUD via CategoryRepository, business/personal tabs
+- `ReceiptScannerBloc` — camera init, capture, gallery pick, flash toggle via ImagePicker
+- `ReceiptProcessingBloc` — step-by-step OCR → AI categorization with mock data flow
+- `AnalyticsBloc` — weekly trend, category distribution, total spending from ExpenseRepository
+- `ReportsBloc` — generate reports (monthly/tax/business), PDF/CSV export
+- `SubscriptionBloc` — free/premium plans, purchase, restore via LocalStorageService
+- `ProfileBloc` — load/update profile, logout, delete account via AuthRepository
+- `SettingsBloc` — theme, currency, notifications, language via LocalStorageService
+- `SyncBloc` — load status, manual sync, retry failed, auto-sync via ExpenseRepository
+- `AdsBloc` — show/hide ads based on subscription status via LocalStorageService
+
+#### Domain Layers
+- `CategoryRepository` interface + 4 use cases (get, add, update, delete)
+- `CategoryModel`, `CategoryLocalDataSource` (Drift), `CategoryRemoteDataSource` (mock Dio)
+- `CategoryRepositoryImpl` (offline-first: local then try remote sync)
+
+#### Data Layers
+- `CategoryLocalDataSourceImpl` — full Drift CRUD against `categories` table
+- `CategoryRemoteDataSourceImpl` — mock Dio client for `/api/categories`
+
+#### Auth Updates
+- `AuthRepository` now includes `verifyOtp()`, `resendOtp()`, `resetPassword()`
+- `AuthRemoteDataSourceImpl` now handles all OTP endpoints
+
+#### DI (injection.dart)
+- All 14 new BLoCs registered as factories
+- All new repositories, datasources, use cases registered as lazySingletons
+
+#### Router (app_router.dart)
+- **Auth guard** added: redirects unauthenticated users to welcome, authenticated users to dashboard
+- **Onboarding guard**: first-time users see onboarding first
+- Screen 25 (Help & Support) route registered
+
+#### Screen 25 — Help & Support
+- FAQ with 6 expandable items
+- Email, Live Chat, Help Center contact cards
+- Privacy Policy, Terms of Service, Refund Policy links
+- App version and copyright footer
+
+#### Full PHP/MySQL Backend (30+ files)
+- `backend/config/` — database.php, jwt.php, app.php
+- `backend/middleware/` — cors_middleware.php, auth_middleware.php
+- `backend/services/` — JwtService, UploadService, OcrService, AiService, SyncService
+- `backend/controllers/` — Auth, User, Expense, Category, Receipt, Ai, Sync, Subscription
+- `backend/helpers/` — Database (PDO singleton), Response, Validator, input parser
+- `backend/database/schema.sql` — 8 tables (users, expenses, categories, receipts, subscriptions, payments, sync_logs, notifications)
+- `backend/.htaccess` + `backend/index.php` — URL routing with parameterized routes
+- 18 API endpoints all documented and routed
+
+#### Fixes
+- Fixed `dart analyze` — all 10 issues resolved (0 errors, 0 warnings)
+- Fixed dependency conflict: re-resolved `drift_dev` and `injectable_generator` versions
+- Regenerated Drift + Injectable code with `build_runner`
+
+---
+
+### Still Left (minor)
+- Wire BLoC providers into page widgets (currently pages still use local state)
+- Real camera integration in Scanner page (use `camera` plugin — BLoC ready)
+- Real `image_cropper` integration in Crop page
+- OCR/AI backend integration (backend routes ready, BLoC has mock flow)
+- Hive initialization in `main.dart`
+- Real AdMob ad unit IDs
+- Unit/widget tests
+- Release build configuration
+
+---
 
 ### Done
 - **Navigation / GoRouter fixes**
@@ -41,15 +118,21 @@
   - Fixed Welcome screen layout so buttons are not squeezed on small screens.
 - **Static analysis**
   - `dart analyze` now reports **No issues found!**
-- **Expense data + BLoC layer (scaffolded)**
+- **Expense data + BLoC layer (wired to UI)**
   - `ExpenseModel`, `ExpenseLocalDataSource` (Drift), `ExpenseRemoteDataSource` (mock), `ExpenseRepositoryImpl`, and use cases created.
   - `ExpenseBloc`, `ExpenseFormBloc`, `ExpenseDetailsBloc` created.
   - Manual DI registrations added in `lib/core/di/injection.dart`.
-  - **Not yet wired into Expense List / Add Expense / Expense Details screens.**
+  - **Now wired into all three expense screens** (see below).
+- **Expense screens now data-driven**
+  - `ExpenseListPage` → `ExpenseBloc`: loads via Drift, search dispatches `SearchExpensesRequested`, date filter chips (Today/Week/Month) filter locally, total/count derived from loaded list, tap opens details.
+  - `AddExpensePage` → `ExpenseFormBloc`: validates + submits (create/update), shows submit spinner + success snackbar, pops on success. Supports **edit mode** (passed existing `Expense` via router `extra`).
+  - `ExpenseDetailsPage` → `ExpenseDetailsBloc`: loads by id, full detail rows, AI confidence + sync chip from real data, delete dispatches `DeleteExpenseDetailsRequested` and pops on success, Edit opens edit route.
+  - Added `/expenses/:id/edit` route in `app_router.dart`.
+  - Added `lib/features/expenses/presentation/helpers/expense_ui_helper.dart` (category icon/color map, sync-status label/color, date formatting + range filter).
 
 ### Still Left
-- Phase 2: Implement remaining BLoCs (`DashboardBloc`, `CategoryBloc`, `AnalyticsBloc`, `ReportsBloc`, `SubscriptionBloc`, `ProfileBloc`, `SettingsBloc`, `SyncBloc`, `AdsBloc`, `ReceiptProcessingBloc`).
-- Phase 3: Wire remaining Drift DAOs and data sources (categories, sync, subscription, ads). Expense data source is scaffolded.
+- Phase 2: Implement remaining BLoCs (`DashboardBloc`, `CategoryBloc`, `AnalyticsBloc`, `ReportsBloc`, `SubscriptionBloc`, `ProfileBloc`, `SettingsBloc`, `SyncBloc`, `AdsBloc`, `ReceiptProcessingBloc`). Expense BLoCs are done and wired.
+- Phase 3: Wire remaining Drift DAOs and data sources (categories, sync, subscription, ads). Expense data source is done.
 - Phase 4: Real image cropping (`image_cropper`), OCR/AI backend calls, auto-populate receipt result.
 - Phase 5: Build PHP/MySQL backend.
 - Phase 6: Sync system implementation.
@@ -80,9 +163,9 @@ All 25 screens planned in the spec have been built with dummy/local data. Dark m
 | 11 | Receipt Crop | `features/receipt_scanner/presentation/pages/receipt_crop_page.dart` | ✅ Done | Crop + rotate UI, retake / continue |
 | 12 | AI Processing | `features/receipt_scanner/presentation/pages/ai_processing_page.dart` | ✅ Done | Step-by-step animated progress: OCR → vendor → amount → AI categorization |
 | 13 | Receipt Result | `features/receipt_scanner/presentation/pages/receipt_result_page.dart` | ✅ Done | Shows vendor, amount, date, category, confidence score, save / edit / retake |
-| 14 | Add / Edit Expense | `features/expenses/presentation/pages/add_expense_page.dart` | ✅ Done | All fields: vendor, amount, date, category, payment method, client, project, notes, image |
-| 15 | Expense List | `features/expenses/presentation/pages/expense_list_page.dart` | ✅ Done | Search, filter chips (All/Today/Week/Month), total card, pull-to-refresh, empty state |
-| 16 | Expense Details | `features/expenses/presentation/pages/expense_details_page.dart` | ✅ Done | Full detail view, receipt image, AI explanation, sync status, edit/delete/share actions |
+| 14 | Add / Edit Expense | `features/expenses/presentation/pages/add_expense_page.dart` | ✅ Done | All fields: vendor, amount, date, category, payment method, client, project, notes, image. **Wired to `ExpenseFormBloc` (create/update), edit mode via router `extra`.** |
+| 15 | Expense List | `features/expenses/presentation/pages/expense_list_page.dart` | ✅ Done | **Wired to `ExpenseBloc`**: loads from Drift, search, filter chips, total card, pull-to-refresh, empty state. |
+| 16 | Expense Details | `features/expenses/presentation/pages/expense_details_page.dart` | ✅ Done | **Wired to `ExpenseDetailsBloc`**: real detail view, receipt image, AI confidence, sync status, edit/delete actions. |
 | 17 | Category Management | `features/categories/presentation/pages/categories_page.dart` | ✅ Done | Business + Personal tabs, add/edit/delete categories, color picker |
 | 18 | Analytics Dashboard | `features/analytics/presentation/pages/analytics_page.dart` | ✅ Done | fl_chart bar chart (weekly), donut chart (categories), summary stats, period selector |
 | 19 | AI Insights | (inside analytics_page or reports_page) | ⚠️ Partial | AI insight cards exist in analytics; dedicated screen not built separately |
@@ -129,9 +212,9 @@ All 25 screens planned in the spec have been built with dummy/local data. Dark m
 | `AuthBloc` | `features/auth/presentation/bloc/` | ✅ Done | LoginEvent, RegisterEvent, LogoutEvent, CheckAuthStatus | AuthInitial, AuthLoading, Authenticated, Unauthenticated, AuthError |
 | `OtpBloc` | `features/auth/presentation/bloc/` | 🔴 Empty | VerifyOtpRequested, ResendOtpRequested | OtpInitial, Loading, OtpVerified, OtpError |
 | `DashboardBloc` | `features/dashboard/presentation/bloc/` | 🔴 Empty | LoadDashboardData, LoadRecentExpenses, CheckSyncStatus | DashboardInitial, Loading, Loaded, Error |
-| `ExpenseBloc` | `features/expenses/presentation/bloc/` | ✅ Done | LoadExpenses, SearchExpenses, DeleteExpense | ExpenseInitial, Loading, Loaded, Error |
-| `ExpenseFormBloc` | `features/expenses/presentation/bloc/` | ✅ Done | InitializeExpenseForm, ExpenseDraftUpdated, SubmitExpenseForm | ExpenseFormState |
-| `ExpenseDetailsBloc` | `features/expenses/presentation/bloc/` | ✅ Done | LoadExpenseDetails, DeleteExpenseDetailsRequested | ExpenseDetailsInitial, Loading, Loaded, Deleted, Error |
+| `ExpenseBloc` | `features/expenses/presentation/bloc/` | ✅ Done (wired) | LoadExpenses, SearchExpenses, DeleteExpense | ExpenseInitial, Loading, Loaded, Error |
+| `ExpenseFormBloc` | `features/expenses/presentation/bloc/` | ✅ Done (wired) | InitializeExpenseForm, ExpenseDraftUpdated, SubmitExpenseForm | ExpenseFormState |
+| `ExpenseDetailsBloc` | `features/expenses/presentation/bloc/` | ✅ Done (wired) | LoadExpenseDetails, DeleteExpenseDetailsRequested | ExpenseDetailsInitial, Loading, Loaded, Deleted, Error |
 | `ReceiptScannerBloc` | `features/receipt_scanner/presentation/bloc/` | 🔴 Empty | InitializeCamera, CaptureReceipt, PickFromGallery, ToggleFlash | ScannerInitial, Ready, Capturing, ImageCaptured, Error |
 | `ReceiptProcessingBloc` | `features/receipt_scanner/presentation/bloc/` | 🔴 Empty | StartProcessing, RunOcr, RunAiCategorization | ProcessingInitial, Loading, OcrCompleted, AiCompleted, Success, Error |
 | `CategoryBloc` | `features/categories/presentation/bloc/` | 🔴 Empty | LoadCategories, AddCategory, UpdateCategory, DeleteCategory | CategoryInitial, Loading, Loaded, Error |
@@ -363,7 +446,7 @@ All 25 screens planned in the spec have been built with dummy/local data. Dark m
 12. ~~Create `ExpenseLocalDataSource` + `ExpenseRemoteDataSource`~~ ✅
 13. ~~Create `ExpenseRepositoryImpl`~~ ✅
 14. ~~Create `ExpenseBloc` + `ExpenseFormBloc` + `ExpenseDetailsBloc`~~ ✅
-15. Wire into Expense List, Add/Edit, Details screens
+15. ~~Wire into Expense List, Add/Edit, Details screens~~ ✅
 
 ### Step 5 — Receipt + AI Flow
 16. Integrate real `camera` plugin into Scanner
@@ -471,15 +554,7 @@ lib/
     │   │       └── delete_expense_usecase.dart         ✅
     │   └── presentation/
     │       ├── bloc/                                   ✅
-    │       │   ├── expense_bloc.dart                   ✅
-    │       │   ├── expense_event.dart                  ✅
-    │       │   ├── expense_state.dart                  ✅
-    │       │   ├── expense_form_bloc.dart              ✅
-    │       │   ├── expense_form_event.dart             ✅
-    │       │   ├── expense_form_state.dart             ✅
-    │       │   ├── expense_details_bloc.dart           ✅
-    │       │   ├── expense_details_event.dart          ✅
-    │       │   └── expense_details_state.dart          ✅
+    │       ├── helpers/                                ✅ (expense_ui_helper.dart)
     │       └── pages/
     │           ├── expense_list_page.dart              ✅
     │           ├── expense_details_page.dart           ✅

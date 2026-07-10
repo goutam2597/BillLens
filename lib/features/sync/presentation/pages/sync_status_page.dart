@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Sync item model
@@ -140,8 +141,7 @@ class _SyncStatusPageState extends State<SyncStatusPage>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor =
-        isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final colorScheme = Theme.of(context).colorScheme;
     final surfaceColor =
         isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
     final textPrimary =
@@ -156,15 +156,11 @@ class _SyncStatusPageState extends State<SyncStatusPage>
     const String lastSync = 'Today, 10:31 AM';
 
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor:
-            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        elevation: 0,
-        scrolledUnderElevation: 0,
+      backgroundColor: colorScheme.surfaceContainerLowest,
+      appBar: AppPageBar(
+        title: 'Sync Status',
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: textPrimary, size: 20),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () {
             if (context.canPop()) {
               context.safePop(AppRoutes.profile);
@@ -173,40 +169,23 @@ class _SyncStatusPageState extends State<SyncStatusPage>
             }
           },
         ),
-        title: Text(
-          'Sync Status',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: textPrimary,
-          ),
-        ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              onPressed: _isSyncing ? null : _startSync,
-              icon: _isSyncing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(AppColors.primary),
-                      ),
-                    )
-                  : Icon(Icons.refresh_rounded, color: textPrimary),
-            ),
+          IconButton(
+            tooltip: 'Sync now',
+            onPressed: _isSyncing ? null : _startSync,
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  )
+                : const Icon(Icons.refresh_rounded),
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(
-            height: 1,
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-          ),
-        ),
       ),
       body: Column(
         children: [
@@ -242,71 +221,86 @@ class _SyncStatusPageState extends State<SyncStatusPage>
 
                   const SizedBox(height: 20),
 
-                  // ── Statistics Row ────────────────────────────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Offline Records',
-                          value: offlineCount.toString(),
-                          icon: Icons.storage_rounded,
-                          color: AppColors.primary,
-                          isDark: isDark,
-                          surfaceColor: surfaceColor,
-                          borderColor: borderColor,
+                  const AppSectionHeader(title: 'Sync overview'),
+                  const SizedBox(height: 8),
+                  AppGroupedSurface(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Offline Records',
+                            value: offlineCount.toString(),
+                            icon: Icons.storage_rounded,
+                            color: AppColors.primary,
+                            isDark: isDark,
+                            surfaceColor: surfaceColor,
+                            borderColor: borderColor,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Pending Sync',
-                          value: pendingCount.toString(),
-                          icon: Icons.pending_outlined,
-                          color: AppColors.warning,
-                          isDark: isDark,
-                          surfaceColor: surfaceColor,
-                          borderColor: borderColor,
+                        VerticalDivider(
+                          width: 1,
+                          color: colorScheme.outlineVariant,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Failed',
-                          value: failedCount.toString(),
-                          icon: Icons.error_outline_rounded,
-                          color: AppColors.error,
-                          isDark: isDark,
-                          surfaceColor: surfaceColor,
-                          borderColor: borderColor,
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Pending Sync',
+                            value: pendingCount.toString(),
+                            icon: Icons.pending_outlined,
+                            color: AppColors.warning,
+                            isDark: isDark,
+                            surfaceColor: surfaceColor,
+                            borderColor: borderColor,
+                          ),
                         ),
-                      ),
-                    ],
+                        VerticalDivider(
+                          width: 1,
+                          color: colorScheme.outlineVariant,
+                        ),
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Failed',
+                            value: failedCount.toString(),
+                            icon: Icons.error_outline_rounded,
+                            color: AppColors.error,
+                            isDark: isDark,
+                            surfaceColor: surfaceColor,
+                            borderColor: borderColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 24),
 
                   // ── Recent Sync Activity ──────────────────────────────────
-                  Text(
-                    'Recent Activity',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  ..._syncItems.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _SyncItemCard(
-                        item: item,
-                        isDark: isDark,
-                        surfaceColor: surfaceColor,
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                        borderColor: borderColor,
-                      ),
+                  const AppSectionHeader(title: 'Recent activity'),
+                  const SizedBox(height: 8),
+                  AppGroupedSurface(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (var index = 0;
+                            index < _syncItems.length;
+                            index++) ...[
+                          _SyncItemCard(
+                            item: _syncItems[index],
+                            isDark: isDark,
+                            surfaceColor: surfaceColor,
+                            textPrimary: textPrimary,
+                            textSecondary: textSecondary,
+                            borderColor: borderColor,
+                          ),
+                          if (index < _syncItems.length - 1)
+                            Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: colorScheme.outlineVariant,
+                            ),
+                        ],
+                      ],
                     ),
                   ),
 
@@ -314,28 +308,11 @@ class _SyncStatusPageState extends State<SyncStatusPage>
 
                   // ── Retry Failed button ───────────────────────────────────
                   if (failedCount > 0)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _isSyncing ? null : _startSync,
-                        icon: const Icon(Icons.replay_rounded,
-                            color: AppColors.error, size: 18),
-                        label: Text(
-                          'Retry $failedCount Failed Item${failedCount > 1 ? 's' : ''}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.error,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          side: const BorderSide(color: AppColors.error),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
+                    SecondaryButton(
+                      text:
+                          'Retry $failedCount failed item${failedCount > 1 ? 's' : ''}',
+                      onPressed: _isSyncing ? null : _startSync,
+                      borderColor: AppColors.error,
                     ),
 
                   const SizedBox(height: 32),
@@ -403,20 +380,9 @@ class _SyncHeroCard extends StatelessWidget {
       statusLabel = 'All up to date';
     }
 
-    return Container(
+    return AppGroupedSurface(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            statusColor.withValues(alpha: 0.12),
-            statusColor.withValues(alpha: 0.04),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: statusColor.withValues(alpha: 0.25)),
-      ),
+      borderColor: statusColor.withValues(alpha: 0.35),
       child: Column(
         children: [
           // Icon + status
@@ -492,36 +458,11 @@ class _SyncHeroCard extends StatelessWidget {
 
           if (!isSyncing) ...[
             const SizedBox(height: 16),
-            GestureDetector(
-              onTap: onSyncNow,
-              child: Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: AppColors.primaryShadow,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.sync_rounded,
-                        color: Colors.white, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Sync Now',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            PrimaryButton(
+              text: 'Sync now',
+              height: 46,
+              icon: const Icon(Icons.sync_rounded, color: Colors.white),
+              onPressed: onSyncNow,
             ),
           ],
         ],
@@ -554,15 +495,8 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-        boxShadow:
-            isDark ? AppColors.cardShadowDark : AppColors.cardShadowLight,
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
         children: [
           Container(
@@ -656,15 +590,8 @@ class _SyncItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-        boxShadow:
-            isDark ? AppColors.cardShadowDark : AppColors.cardShadowLight,
-      ),
       child: Row(
         children: [
           // Icon

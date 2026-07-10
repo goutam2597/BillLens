@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/theme/app_colors.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -21,19 +23,19 @@ class _OnboardingPageState extends State<OnboardingPage> {
       title: 'Never lose your\nreceipts again',
       subtitle:
           'Scan and save receipts digitally in seconds.\nYour expenses, always organized.',
-      gradientColors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+      gradientColors: [AppColors.primaryDark, AppColors.primaryLight],
     ),
     _OnboardingData(
       title: 'AI understands\nyour expenses',
       subtitle:
           'Our intelligent engine categorizes your spending\nso you never have to manually sort again.',
-      gradientColors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+      gradientColors: [AppColors.primary, AppColors.accentDark],
     ),
     _OnboardingData(
       title: 'Save hours\nevery month',
       subtitle:
           'Auto-categorization, monthly reports, and\ntax-ready records at your fingertips.',
-      gradientColors: [Color(0xFF059669), Color(0xFF10B981)],
+      gradientColors: [AppColors.accentDark, AppColors.accent],
     ),
   ];
 
@@ -50,11 +52,19 @@ class _OnboardingPageState extends State<OnboardingPage> {
         curve: Curves.easeInOut,
       );
     } else {
-      context.go(AppRoutes.welcome);
+      _finishOnboarding();
     }
   }
 
-  void _skip() => context.go(AppRoutes.welcome);
+  void _skip() => _finishOnboarding();
+
+  Future<void> _finishOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_complete', true);
+    if (mounted) {
+      context.go(AppRoutes.dashboard);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +90,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 duration: const Duration(milliseconds: 250),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
+                    horizontal: 24,
                     vertical: 12,
                   ),
                   child: TextButton(
@@ -111,7 +121,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -137,32 +147,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     const SizedBox(height: 28),
 
                     // Next / Get Started button
-                    GestureDetector(
-                      onTap: _nextPage,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 20,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _nextPage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor:
+                              _pages[_currentPage].gradientColors.first,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                        child: Center(
-                          child: Text(
-                            _currentPage == _totalPages - 1
-                                ? 'Get Started'
-                                : 'Next',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: _pages[_currentPage].gradientColors.first,
-                            ),
+                        child: Text(
+                          _currentPage == _totalPages - 1
+                              ? 'Get Started'
+                              : 'Next',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: _pages[_currentPage].gradientColors.first,
                           ),
                         ),
                       ),
@@ -215,19 +221,19 @@ class _OnboardingSlide extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 80),
+            const SizedBox(height: 40),
 
             // Illustration area
             Expanded(
-              flex: 5,
+              flex: 3,
               child: Center(child: _buildIllustration(pageIndex)),
             ),
 
             // Text content
             Expanded(
-              flex: 4,
+              flex: 3,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -239,7 +245,6 @@ class _OnboardingSlide extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                         height: 1.2,
-                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -267,7 +272,7 @@ class _OnboardingSlide extends StatelessWidget {
             ),
 
             // Space for bottom controls
-            const SizedBox(height: 140),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -285,25 +290,15 @@ class _OnboardingSlide extends StatelessWidget {
       width: 160,
       height: 160,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(16),
         color: Colors.white.withValues(alpha: 0.15),
         border:
             Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
       ),
-      child: Center(
-        child: Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.2),
-          ),
-          child: Icon(
-            icons[index],
-            size: 60,
-            color: Colors.white,
-          ),
-        ),
+      child: Icon(
+        icons[index],
+        size: 64,
+        color: Colors.white,
       ),
     );
   }
@@ -371,7 +366,7 @@ class _OnboardingSlide extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(10),
                       color: Colors.white.withValues(alpha: 0.2),
                     ),
                     child: Icon(f.$1, size: 18, color: Colors.white),

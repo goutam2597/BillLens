@@ -23,6 +23,8 @@ class Expenses extends Table {
   RealColumn get amount => real()();
   TextColumn get currency => text().withDefault(const Constant('USD'))();
   IntColumn get categoryId => integer().nullable()();
+  TextColumn get categoryName => text().nullable()();
+  TextColumn get categoryIcon => text().nullable()();
   DateTimeColumn get date => dateTime()();
   TextColumn get paymentMethod => text().nullable()();
   TextColumn get clientName => text().nullable()();

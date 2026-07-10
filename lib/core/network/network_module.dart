@@ -6,11 +6,12 @@ import 'auth_interceptor.dart';
 
 @module
 abstract class NetworkModule {
+  @Named('dio')
   @singleton
   Dio dio(AuthInterceptor authInterceptor) {
     final dio = Dio(
       BaseOptions(
-        baseUrl: 'https://api.billlens.com/api', // TODO: Move to env config
+        baseUrl: 'http://192.168.0.173/billlens/backend/public',
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         headers: {

@@ -5,6 +5,10 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
+import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
+import 'features/expenses/presentation/bloc/expense_bloc.dart';
+import 'features/analytics/presentation/bloc/analytics_bloc.dart';
+import 'features/analytics/presentation/bloc/analytics_event.dart';
 
 class BillLensApp extends StatelessWidget {
   const BillLensApp({super.key});
@@ -15,6 +19,17 @@ class BillLensApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthBloc>(
           create: (context) => getIt<AuthBloc>()..add(CheckAuthStatus()),
+        ),
+        BlocProvider<DashboardBloc>(
+          create: (context) => getIt<DashboardBloc>(),
+        ),
+        BlocProvider<ExpenseBloc>(
+          create: (context) =>
+              getIt<ExpenseBloc>()..add(const LoadExpensesRequested()),
+        ),
+        BlocProvider<AnalyticsBloc>(
+          create: (context) =>
+              getIt<AnalyticsBloc>()..add(const LoadAnalytics()),
         ),
       ],
       child: MaterialApp.router(

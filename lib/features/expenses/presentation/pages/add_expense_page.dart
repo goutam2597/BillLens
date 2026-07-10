@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/di/injection.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
 import 'package:billlens/core/theme/app_colors.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
+import 'package:billlens/features/expenses/domain/entities/expense.dart';
+import 'package:billlens/features/expenses/presentation/bloc/expense_form_bloc.dart';
+import 'package:billlens/features/expenses/presentation/bloc/expense_bloc.dart';
+import 'package:billlens/features/dashboard/presentation/bloc/dashboard_bloc.dart';
+import 'package:billlens/features/dashboard/presentation/bloc/dashboard_event.dart';
+import 'package:billlens/features/analytics/presentation/bloc/analytics_bloc.dart';
+import 'package:billlens/features/analytics/presentation/bloc/analytics_event.dart';
 
 // ---------------------------------------------------------------------------
 // Category model
@@ -59,19 +69,86 @@ const List<String> _paymentMethods = [
 ];
 
 // ---------------------------------------------------------------------------
-// Add Expense Page
+// Add / Edit Expense Page
 // ---------------------------------------------------------------------------
-class AddExpensePage extends StatefulWidget {
-  const AddExpensePage({super.key});
+class AddExpensePage extends StatelessWidget {
+  final Expense? expense;
+
+  const AddExpensePage({super.key, this.expense});
 
   @override
-  State<AddExpensePage> createState() => _AddExpensePageState();
+  Widget build(BuildContext context) {
+    return BlocProvider<ExpenseFormBloc>(
+      create: (_) => getIt<ExpenseFormBloc>()
+        ..add(InitializeExpenseForm(expense: expense)),
+      child: BlocConsumer<ExpenseFormBloc, ExpenseFormState>(
+        listener: (context, state) {
+          if (state.isSuccess) {
+            // Refresh dashboard, expenses list, and analytics so new expense appears immediately
+            context.read<DashboardBloc>().add(LoadDashboardData());
+            context.read<ExpenseBloc>().add(const LoadExpensesRequested());
+            context.read<AnalyticsBloc>().add(LoadAnalytics());
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: AppColors.accent,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      expense == null
+                          ? 'Expense saved successfully!'
+                          : 'Expense updated successfully!',
+                      style: GoogleFonts.outfit(
+                          color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            );
+            context.safePop(AppRoutes.expenseList);
+          } else if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: AppColors.error,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                content: Text(
+                  state.errorMessage!,
+                  style: GoogleFonts.outfit(
+                      color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          return _AddExpenseForm(
+              isSaving: state.isSubmitting, expense: expense);
+        },
+      ),
+    );
+  }
 }
 
-class _AddExpensePageState extends State<AddExpensePage> {
+class _AddExpenseForm extends StatefulWidget {
+  final bool isSaving;
+  final Expense? expense;
+
+  const _AddExpenseForm({required this.isSaving, this.expense});
+
+  @override
+  State<_AddExpenseForm> createState() => _AddExpenseFormState();
+}
+
+class _AddExpenseFormState extends State<_AddExpenseForm> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _vendorCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
@@ -79,18 +156,35 @@ class _AddExpensePageState extends State<AddExpensePage> {
   final _projectCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
-  // State
   DateTime? _selectedDate;
   _Category? _selectedCategory;
   String? _selectedPaymentMethod;
-  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    final e = widget.expense;
     final now = DateTime.now();
-    _selectedDate = now;
-    _dateCtrl.text = _formatDate(now);
+    _selectedDate = e?.date ?? now;
+    _dateCtrl.text = _formatDate(_selectedDate!);
+    _vendorCtrl.text = e?.vendor ?? '';
+    _amountCtrl.text = e != null ? e.amount.toStringAsFixed(2) : '';
+    _clientCtrl.text = e?.clientName ?? '';
+    _projectCtrl.text = e?.projectName ?? '';
+    _notesCtrl.text = e?.notes ?? '';
+    _selectedPaymentMethod = e?.paymentMethod;
+    // Guard: if the value isn't in the dropdown list, clear it so the
+    // DropdownButtonFormField assertion doesn't fire.
+    if (_selectedPaymentMethod != null &&
+        !_paymentMethods.contains(_selectedPaymentMethod)) {
+      _selectedPaymentMethod = null;
+    }
+    if (e?.categoryName != null) {
+      _selectedCategory = _categories.firstWhere(
+        (c) => c.name == e!.categoryName,
+        orElse: () => _categories.last,
+      );
+    }
   }
 
   @override
@@ -152,32 +246,39 @@ class _AddExpensePageState extends State<AddExpensePage> {
     }
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _isSaving = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.accent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded,
-                color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              'Expense saved successfully!',
-              style: GoogleFonts.outfit(
-                  color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
+  Expense _buildExpense() {
+    final parsed = double.tryParse(_amountCtrl.text.replaceAll(',', '')) ?? 0.0;
+    final now = DateTime.now();
+    final base = widget.expense ??
+        Expense(
+          id: '',
+          userId: '',
+          vendor: '',
+          amount: 0.0,
+          currency: 'USD',
+          date: now,
+          syncStatus: 'pending',
+          createdAt: now,
+          updatedAt: now,
+        );
+    return base.copyWith(
+      vendor: _vendorCtrl.text.trim(),
+      amount: parsed,
+      date: _selectedDate ?? now,
+      categoryName: _selectedCategory?.name,
+      paymentMethod: _selectedPaymentMethod,
+      clientName: _clientCtrl.text.trim(),
+      projectName: _projectCtrl.text.trim(),
+      notes: _notesCtrl.text.trim(),
+      updatedAt: now,
     );
-    context.safePop(AppRoutes.expenseList);
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    final bloc = context.read<ExpenseFormBloc>();
+    bloc.add(ExpenseDraftUpdated(_buildExpense()));
+    bloc.add(const SubmitExpenseForm());
   }
 
   @override
@@ -195,203 +296,157 @@ class _AddExpensePageState extends State<AddExpensePage> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: surfaceColor,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: AppPageBar(
+        title: widget.expense == null ? 'Add Expense' : 'Edit Expense',
         leading: IconButton(
           icon: Icon(Icons.close_rounded, color: textPrimary, size: 22),
           onPressed: () => context.safePop(AppRoutes.expenseList),
-        ),
-        title: Text(
-          'Add Expense',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: textPrimary,
-          ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: borderColor),
+          tooltip: 'Close',
         ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
           children: [
-            // ── Vendor ──────────────────────────────────────────────────
-            _SectionLabel(label: 'Vendor *', textSecondary: textSecondary),
+            const AppSectionHeader(title: 'Expense information'),
             const SizedBox(height: 8),
-            _InputField(
-              controller: _vendorCtrl,
-              hintText: 'e.g. Starbucks, Amazon',
-              prefixIcon: Icons.store_rounded,
-              isDark: isDark,
-              borderColor: borderColor,
-              textPrimary: textPrimary,
-              surfaceColor: surfaceColor,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Vendor is required' : null,
-            ),
-            const SizedBox(height: 16),
-
-            // ── Amount ──────────────────────────────────────────────────
-            _SectionLabel(label: 'Amount *', textSecondary: textSecondary),
-            const SizedBox(height: 8),
-            _AmountField(
-              controller: _amountCtrl,
-              isDark: isDark,
-              borderColor: borderColor,
-              textPrimary: textPrimary,
-              surfaceColor: surfaceColor,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Amount is required';
-                final parsed = double.tryParse(v.replaceAll(',', ''));
-                if (parsed == null || parsed <= 0) {
-                  return 'Enter a valid amount';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // ── Date ────────────────────────────────────────────────────
-            _SectionLabel(label: 'Date *', textSecondary: textSecondary),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _pickDate,
-              child: AbsorbPointer(
-                child: _InputField(
-                  controller: _dateCtrl,
-                  hintText: 'Select date',
-                  prefixIcon: Icons.calendar_today_rounded,
-                  isDark: isDark,
-                  borderColor: borderColor,
-                  textPrimary: textPrimary,
-                  surfaceColor: surfaceColor,
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Date is required' : null,
-                ),
+            AppGroupedSurface(
+              child: Column(
+                children: [
+                  _InputField(
+                    controller: _vendorCtrl,
+                    hintText: 'Vendor *',
+                    prefixIcon: Icons.store_rounded,
+                    isDark: isDark,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    surfaceColor: surfaceColor,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Vendor is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _AmountField(
+                    controller: _amountCtrl,
+                    isDark: isDark,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    surfaceColor: surfaceColor,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Amount is required';
+                      }
+                      final parsed = double.tryParse(v.replaceAll(',', ''));
+                      return parsed == null || parsed <= 0
+                          ? 'Enter a valid amount'
+                          : null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: _pickDate,
+                    child: AbsorbPointer(
+                      child: _InputField(
+                        controller: _dateCtrl,
+                        hintText: 'Date *',
+                        prefixIcon: Icons.calendar_today_rounded,
+                        isDark: isDark,
+                        borderColor: borderColor,
+                        textPrimary: textPrimary,
+                        surfaceColor: surfaceColor,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Date is required'
+                            : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _CategoryDropdown(
+                    selected: _selectedCategory,
+                    isDark: isDark,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    surfaceColor: surfaceColor,
+                    onChanged: (c) => setState(() => _selectedCategory = c),
+                    validator: (_) => _selectedCategory == null
+                        ? 'Please select a category'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _PaymentMethodDropdown(
+                    selected: _selectedPaymentMethod,
+                    isDark: isDark,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    surfaceColor: surfaceColor,
+                    onChanged: (v) =>
+                        setState(() => _selectedPaymentMethod = v),
+                    validator: (_) => _selectedPaymentMethod == null
+                        ? 'Please select a payment method'
+                        : null,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // ── Category ────────────────────────────────────────────────
-            _SectionLabel(label: 'Category *', textSecondary: textSecondary),
+            const SizedBox(height: 24),
+            const AppSectionHeader(title: 'Business context'),
             const SizedBox(height: 8),
-            _CategoryDropdown(
-              selected: _selectedCategory,
-              isDark: isDark,
-              borderColor: borderColor,
-              textPrimary: textPrimary,
-              textSecondary: textSecondary,
-              surfaceColor: surfaceColor,
-              onChanged: (c) => setState(() => _selectedCategory = c),
-              validator: (_) =>
-                  _selectedCategory == null ? 'Please select a category' : null,
+            AppGroupedSurface(
+              child: Column(
+                children: [
+                  _InputField(
+                    controller: _clientCtrl,
+                    hintText: 'Client name (optional)',
+                    prefixIcon: Icons.person_outline_rounded,
+                    isDark: isDark,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    surfaceColor: surfaceColor,
+                  ),
+                  const SizedBox(height: 12),
+                  _InputField(
+                    controller: _projectCtrl,
+                    hintText: 'Project name (optional)',
+                    prefixIcon: Icons.folder_outlined,
+                    isDark: isDark,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    surfaceColor: surfaceColor,
+                  ),
+                  const SizedBox(height: 12),
+                  _NotesField(
+                    controller: _notesCtrl,
+                    isDark: isDark,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    surfaceColor: surfaceColor,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // ── Payment Method ──────────────────────────────────────────
-            _SectionLabel(
-                label: 'Payment Method *', textSecondary: textSecondary),
+            const SizedBox(height: 24),
+            const AppSectionHeader(title: 'Receipt'),
             const SizedBox(height: 8),
-            _PaymentMethodDropdown(
-              selected: _selectedPaymentMethod,
-              isDark: isDark,
-              borderColor: borderColor,
-              textPrimary: textPrimary,
-              textSecondary: textSecondary,
-              surfaceColor: surfaceColor,
-              onChanged: (v) => setState(() => _selectedPaymentMethod = v),
-              validator: (_) => _selectedPaymentMethod == null
-                  ? 'Please select a payment method'
-                  : null,
-            ),
-            const SizedBox(height: 16),
-
-            // ── Client Name (optional) ──────────────────────────────────
-            _SectionLabel(
-                label: 'Client Name (optional)', textSecondary: textSecondary),
-            const SizedBox(height: 8),
-            _InputField(
-              controller: _clientCtrl,
-              hintText: 'e.g. Acme Corp',
-              prefixIcon: Icons.person_outline_rounded,
-              isDark: isDark,
-              borderColor: borderColor,
-              textPrimary: textPrimary,
-              surfaceColor: surfaceColor,
-            ),
-            const SizedBox(height: 16),
-
-            // ── Project Name (optional) ─────────────────────────────────
-            _SectionLabel(
-                label: 'Project Name (optional)', textSecondary: textSecondary),
-            const SizedBox(height: 8),
-            _InputField(
-              controller: _projectCtrl,
-              hintText: 'e.g. Q3 Campaign',
-              prefixIcon: Icons.folder_outlined,
-              isDark: isDark,
-              borderColor: borderColor,
-              textPrimary: textPrimary,
-              surfaceColor: surfaceColor,
-            ),
-            const SizedBox(height: 16),
-
-            // ── Notes (optional) ────────────────────────────────────────
-            _SectionLabel(
-                label: 'Notes (optional)', textSecondary: textSecondary),
-            const SizedBox(height: 8),
-            _NotesField(
-              controller: _notesCtrl,
-              isDark: isDark,
-              borderColor: borderColor,
-              textPrimary: textPrimary,
-              surfaceColor: surfaceColor,
-            ),
-            const SizedBox(height: 20),
-
-            // ── Receipt Photo area ───────────────────────────────────────
-            _SectionLabel(label: 'Receipt Photo', textSecondary: textSecondary),
-            const SizedBox(height: 8),
-            _ReceiptPhotoArea(
-              isDark: isDark,
-              borderColor: borderColor,
-              textSecondary: textSecondary,
+            AppGroupedSurface(
+              child: _ReceiptPhotoArea(
+                isDark: isDark,
+                borderColor: borderColor,
+                textSecondary: textSecondary,
+              ),
             ),
             const SizedBox(height: 32),
-
-            // ── Save button ─────────────────────────────────────────────
-            _SaveButton(isSaving: _isSaving, onSave: _save),
+            PrimaryButton(
+              text: widget.expense == null ? 'Save Expense' : 'Update Expense',
+              onPressed: _save,
+              isLoading: widget.isSaving,
+              icon: const Icon(Icons.check_rounded, size: 20),
+            ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Section label
-// ---------------------------------------------------------------------------
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  final Color textSecondary;
-
-  const _SectionLabel({required this.label, required this.textSecondary});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: GoogleFonts.outfit(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: textSecondary,
       ),
     );
   }
@@ -798,58 +853,6 @@ class _DashedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) =>
       oldDelegate.color != color;
-}
-
-// ---------------------------------------------------------------------------
-// Save button (gradient)
-// ---------------------------------------------------------------------------
-class _SaveButton extends StatelessWidget {
-  final bool isSaving;
-  final VoidCallback onSave;
-
-  const _SaveButton({required this.isSaving, required this.onSave});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isSaving ? null : onSave,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: isSaving
-              ? const LinearGradient(
-                  colors: [Color(0xFF93C5FD), Color(0xFF6EE7B7)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: isSaving ? [] : AppColors.primaryShadow,
-        ),
-        child: Center(
-          child: isSaving
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Text(
-                  'Save Expense',
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------

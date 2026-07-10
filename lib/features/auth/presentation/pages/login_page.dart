@@ -4,10 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import '../../../../features/expenses/presentation/bloc/expense_bloc.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -50,16 +52,13 @@ class _LoginPageState extends State<LoginPage> {
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
     final textSecondary =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
-    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
-    final surfaceColor =
-        isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight;
-
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: bgColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
+        elevation: 2,
+        scrolledUnderElevation: 4,
+        shadowColor: Colors.black.withValues(alpha: 0.18),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: textPrimary, size: 20),
@@ -69,6 +68,7 @@ class _LoginPageState extends State<LoginPage> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
+            context.read<ExpenseBloc>().add(const LoadExpensesRequested());
             context.go(AppRoutes.dashboard);
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -83,26 +83,26 @@ class _LoginPageState extends State<LoginPage> {
           final isLoading = state is AuthLoading;
           return SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
                     // Title
                     Text(
                       'Welcome Back!',
                       style: GoogleFonts.outfit(
                         fontSize: 28,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: textPrimary,
-                        letterSpacing: -0.5,
+                        height: 1.2,
                       ),
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
 
                     Text(
                       'Sign in to your account',
@@ -110,26 +110,20 @@ class _LoginPageState extends State<LoginPage> {
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                         color: textSecondary,
+                        height: 1.5,
                       ),
                     ),
 
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 32),
 
                     // Email field
-                    _buildLabel('Email Address', textSecondary),
-                    const SizedBox(height: 8),
-                    TextFormField(
+                    AppTextField(
+                      label: 'Email Address',
+                      hint: 'you@example.com',
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style:
-                          GoogleFonts.outfit(fontSize: 15, color: textPrimary),
-                      decoration: _inputDecoration(
-                        hint: 'you@example.com',
-                        icon: Icons.email_outlined,
-                        isDark: isDark,
-                        borderColor: borderColor,
-                        surfaceColor: surfaceColor,
-                      ),
+                      textInputAction: TextInputAction.next,
+                      prefixIcon: const Icon(Icons.email_outlined),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return 'Please enter your email';
@@ -146,29 +140,26 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 20),
 
                     // Password field
-                    _buildLabel('Password', textSecondary),
-                    const SizedBox(height: 8),
-                    TextFormField(
+                    AppTextField(
+                      label: 'Password',
+                      hint: 'Enter your password',
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      style:
-                          GoogleFonts.outfit(fontSize: 15, color: textPrimary),
-                      decoration: _inputDecoration(
-                        hint: '••••••••',
-                        icon: Icons.lock_outline_rounded,
-                        isDark: isDark,
-                        borderColor: borderColor,
-                        surfaceColor: surfaceColor,
-                        suffix: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: textSecondary,
-                            size: 20,
-                          ),
-                          onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
+                      textInputAction: TextInputAction.done,
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Show password'
+                            : 'Hide password',
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: textSecondary,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
                         ),
                       ),
                       validator: (v) {
@@ -208,9 +199,11 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 32),
 
                     // Login button
-                    _LoginButton(
+                    PrimaryButton(
+                      text: 'Login',
                       isLoading: isLoading,
-                      onTap: _handleLogin,
+                      onPressed: _handleLogin,
+                      height: 54,
                     ),
 
                     const SizedBox(height: 32),
@@ -248,113 +241,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text, Color color) {
-    return Text(
-      text,
-      style: GoogleFonts.outfit(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: color,
-        letterSpacing: 0.1,
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration({
-    required String hint,
-    required IconData icon,
-    required bool isDark,
-    required Color borderColor,
-    required Color surfaceColor,
-    Widget? suffix,
-  }) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: GoogleFonts.outfit(
-        fontSize: 14,
-        color: isDark ? AppColors.textHintDark : AppColors.textHintLight,
-      ),
-      prefixIcon: Icon(icon,
-          color: isDark ? AppColors.textHintDark : AppColors.textHintLight,
-          size: 20),
-      suffixIcon: suffix,
-      filled: true,
-      fillColor: surfaceColor,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.error, width: 1.2),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-      ),
-    );
-  }
-}
-
-// ── Login button with loading state ──────────────────────────────────────────
-
-class _LoginButton extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback onTap;
-
-  const _LoginButton({required this.isLoading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: isLoading
-              ? const LinearGradient(
-                  colors: [Color(0xFF93C5FD), Color(0xFF60A5FA)])
-              : const LinearGradient(
-                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isLoading ? [] : AppColors.primaryShadow,
-        ),
-        child: Center(
-          child: isLoading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Text(
-                  'Login',
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-        ),
       ),
     );
   }

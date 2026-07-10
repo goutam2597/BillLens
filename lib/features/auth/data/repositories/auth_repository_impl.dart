@@ -74,7 +74,6 @@ class AuthRepositoryImpl implements AuthRepository {
       await localDataSource.clearAuthData();
       return const Right(null);
     } on ServerException catch (e) {
-      // Even if remote logout fails, clear local data
       await localDataSource.clearAuthData();
       return Left(ServerFailure(e.message));
     } catch (e) {
@@ -90,6 +89,45 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(cachedUser);
     } catch (e) {
       return Left(CacheFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> verifyOtp({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      await remoteDataSource.verifyOtp(email: email, code: code);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> resendOtp({required String email}) async {
+    try {
+      await remoteDataSource.resendOtp(email: email);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> resetPassword({required String email}) async {
+    try {
+      await remoteDataSource.resetPassword(email: email);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
     }
   }
 }

@@ -1,33 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:billlens/core/di/injection.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
+import '../../../expenses/domain/entities/expense.dart';
+import '../../../expenses/presentation/bloc/expense_form_bloc.dart';
+import '../../../expenses/presentation/bloc/expense_bloc.dart';
+import '../../../dashboard/presentation/bloc/dashboard_bloc.dart';
+import '../../../dashboard/presentation/bloc/dashboard_event.dart';
+import '../../../analytics/presentation/bloc/analytics_bloc.dart';
+import '../../../analytics/presentation/bloc/analytics_event.dart';
+import '../bloc/receipt_processing_state.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Receipt Result Page
-// ─────────────────────────────────────────────────────────────────────────────
-class ReceiptResultPage extends StatefulWidget {
-  const ReceiptResultPage({super.key});
+class ReceiptResultPage extends StatelessWidget {
+  final dynamic processingResult;
+  const ReceiptResultPage({super.key, this.processingResult});
 
   @override
-  State<ReceiptResultPage> createState() => _ReceiptResultPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider<ExpenseFormBloc>(
+      create: (_) => getIt<ExpenseFormBloc>(),
+      child: _ReceiptResultView(processingResult: processingResult),
+    );
+  }
 }
 
-class _ReceiptResultPageState extends State<ReceiptResultPage>
+class _ReceiptResultView extends StatefulWidget {
+  final dynamic processingResult;
+  const _ReceiptResultView({this.processingResult});
+
+  @override
+  State<_ReceiptResultView> createState() => _ReceiptResultPageState();
+}
+
+class _ReceiptResultPageState extends State<_ReceiptResultView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _cardController;
   late final Animation<double> _cardAnimation;
-
-  // Extracted data fields
-  static const _fields = [
-    ('Vendor', 'Starbucks'),
-    ('Amount', '\$12.50'),
-    ('Date', '09 Jul 2026'),
-    ('Category', 'Client Meeting'),
-    ('Payment', 'Credit Card'),
-    ('Type', 'Business'),
-  ];
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -48,422 +62,482 @@ class _ReceiptResultPageState extends State<ReceiptResultPage>
     super.dispose();
   }
 
+  String get vendor => _getProp('vendor') ?? 'Unknown';
+  double get amount => (_getProp('amount') as num?)?.toDouble() ?? 0;
+  String get date =>
+      _getProp('date') ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String get category => _getProp('category') ?? 'Other';
+  String get categoryType => _getProp('categoryType') ?? 'business';
+  String get explanation => _getProp('explanation') ?? '';
+  double get confidence => (_getProp('confidence') as num?)?.toDouble() ?? 0.5;
+
+  Color get _confidenceColor {
+    if (confidence >= 0.8) return const Color(0xFF15803D);
+    if (confidence >= 0.65) return const Color(0xFFB45309);
+    return Theme.of(context).colorScheme.error;
+  }
+
+  IconData get _confidenceIcon =>
+      confidence >= 0.65 ? Icons.verified_rounded : Icons.error_outline_rounded;
+
+  /// Returns the AI-detected payment method normalised to one of the known
+  /// dropdown values, or null if it cannot be mapped.
+  String? get paymentMethod {
+    final raw = _getProp('paymentMethod') as String?;
+    if (raw == null || raw == '-') return null;
+    return _normalisePaymentMethod(raw);
+  }
+
+  String get currency => (_getProp('currency') as String?) ?? 'USD';
+
+  dynamic _getProp(String key) {
+    final r = widget.processingResult;
+    if (r == null) return null;
+    // Prefer typed access for ProcessingSuccess
+    if (r is ProcessingSuccess) {
+      switch (key) {
+        case 'vendor':
+          return r.vendor;
+        case 'amount':
+          return r.amount;
+        case 'date':
+          return r.date;
+        case 'category':
+          return r.category;
+        case 'categoryType':
+          return r.categoryType;
+        case 'explanation':
+          return r.explanation;
+        case 'confidence':
+          return r.confidence;
+        case 'paymentMethod':
+          return r.paymentMethod;
+        case 'currency':
+          return r.currency;
+        default:
+          return null;
+      }
+    }
+    if (r is Map) {
+      final v = r[key];
+      return v;
+    }
+    return null;
+  }
+
+  /// Valid values that match the DropdownButtonFormField items in AddExpensePage.
+  static const _knownMethods = [
+    'Corporate Card',
+    'Personal Card',
+    'Cash',
+    'Bank Transfer',
+    'PayPal',
+    'Other',
+  ];
+
+  /// Map common AI-returned strings to known dropdown values.
+  static String? _normalisePaymentMethod(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('visa') ||
+        lower.contains('mastercard') ||
+        lower.contains('amex') ||
+        lower.contains('credit') ||
+        lower.contains('debit') ||
+        lower.contains('card')) {
+      return 'Personal Card';
+    }
+    if (lower.contains('cash')) return 'Cash';
+    if (lower.contains('transfer') || lower.contains('bank')) {
+      return 'Bank Transfer';
+    }
+    if (lower.contains('paypal')) return 'PayPal';
+    // Check for exact match (case-insensitive)
+    for (final m in _knownMethods) {
+      if (m.toLowerCase() == lower) return m;
+    }
+    return 'Other';
+  }
+
+  List<MapEntry<String, String>> get _fields => [
+        MapEntry('Vendor', vendor),
+        MapEntry('Amount', '$currency ${amount.toStringAsFixed(2)}'),
+        MapEntry(
+            'Date',
+            DateFormat('dd MMM yyyy')
+                .format(DateTime.tryParse(date) ?? DateTime.now())),
+        MapEntry('Category', category),
+        MapEntry('Payment', paymentMethod ?? 'N/A'),
+        MapEntry('Type', categoryType == 'business' ? 'Business' : 'Personal'),
+      ];
+
   void _saveExpense() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded,
-                color: Color(0xFF10B981), size: 20),
-            const SizedBox(width: 10),
-            Text(
-              'Expense saved!',
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF0F172A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
-      ),
+    if (_isSaving) return;
+    final expense = _buildExpense();
+    final bloc = context.read<ExpenseFormBloc>();
+    bloc.add(ExpenseDraftUpdated(expense));
+    bloc.add(const SubmitExpenseForm());
+  }
+
+  void _editDetails() {
+    final expense = _buildExpense();
+    context.push('/expenses/add', extra: expense);
+  }
+
+  String? get _receiptUrl {
+    final r = widget.processingResult;
+    if (r is ProcessingSuccess) return r.receiptUrl;
+    return null;
+  }
+
+  Expense _buildExpense() {
+    final now = DateTime.now();
+    return Expense(
+      id: '',
+      userId: '',
+      vendor: vendor,
+      amount: amount,
+      currency: currency,
+      categoryName: category,
+      date: DateTime.tryParse(date) ?? now,
+      paymentMethod: paymentMethod,
+      receiptImageRemoteUrl: _receiptUrl,
+      aiConfidence: confidence,
+      aiExplanation: explanation,
+      syncStatus: 'pending',
+      createdAt: now,
+      updatedAt: now,
     );
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) context.go('/dashboard');
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF0F172A), size: 20),
-          onPressed: () => context.safePop(AppRoutes.dashboard),
-        ),
-        title: Text(
-          'Receipt Extracted',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share_outlined,
-                color: Color(0xFF64748B), size: 22),
-            onPressed: () {},
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: const Color(0xFFE2E8F0)),
-        ),
-      ),
-      body: FadeTransition(
-        opacity: _cardAnimation,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.08),
-            end: Offset.zero,
-          ).animate(_cardAnimation),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── Receipt image placeholder ───────────────────────────
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    height: 150,
-                    color: const Color(0xFFE2E8F0),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(
-                          Icons.receipt_long_rounded,
-                          size: 56,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '95% Confidence',
-                              style: GoogleFonts.outfit(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+    final colorScheme = Theme.of(context).colorScheme;
 
-                const SizedBox(height: 20),
-
-                // ── Result card ─────────────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'AI Extracted Data',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0F172A),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981)
-                                  .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFF10B981)
-                                    .withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 12,
-                                  color: Color(0xFF10B981),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '95% Confidence',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF10B981),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // 2-column grid of fields
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          childAspectRatio: 2.8,
-                        ),
-                        itemCount: _fields.length,
-                        itemBuilder: (context, index) {
-                          final field = _fields[index];
-                          return _FieldCell(label: field.$1, value: field.$2);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // ── AI Explanation box ──────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color:
-                              const Color(0xFF2563EB).withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.psychology_outlined,
-                          size: 18,
-                          color: Color(0xFF2563EB),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'AI Insight',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF2563EB),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Starbucks is commonly used for client meetings and business discussions. Categorized as business expense.',
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF1E40AF),
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return BlocListener<ExpenseFormBloc, ExpenseFormState>(
+      listener: (context, state) {
+        if (state.isSubmitting) {
+          setState(() => _isSaving = true);
+        } else if (state.isSuccess) {
+          setState(() => _isSaving = false);
+          // Refresh dashboard, expenses, and analytics so it shows the new expense
+          context.read<DashboardBloc>().add(LoadDashboardData());
+          context.read<ExpenseBloc>().add(const LoadExpensesRequested());
+          context.read<AnalyticsBloc>().add(LoadAnalytics());
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Expense saved successfully!'),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
+          );
+          context.go(AppRoutes.dashboard);
+        } else if (state.errorMessage != null) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage!),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: colorScheme.surfaceContainerLowest,
+        appBar: AppPageBar(
+          title: 'Receipt Extracted',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () => context.safePop(AppRoutes.dashboard),
           ),
-        ),
-      ),
-
-      // ── Bottom action buttons ────────────────────────────────────────────
-      bottomSheet: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, -4),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.share_outlined, size: 22),
+              tooltip: 'Share receipt',
+              onPressed: () {},
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Edit + Save row
-            Row(
-              children: [
-                // Edit Details
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.edit_outlined,
-                        size: 16, color: Color(0xFF2563EB)),
-                    label: Text(
-                      'Edit Details',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF2563EB),
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(
-                          color: Color(0xFF2563EB), width: 1.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Save Expense
-                Expanded(
-                  flex: 2,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              const Color(0xFF2563EB).withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+        body: FadeTransition(
+          opacity: _cardAnimation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.08),
+              end: Offset.zero,
+            ).animate(_cardAnimation),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppGroupedSurface(
+                    padding: const EdgeInsets.all(20),
+                    borderColor: colorScheme.primary.withValues(alpha: 0.28),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.receipt_long_rounded,
+                            color: colorScheme.onPrimaryContainer,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                vendor,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$currency ${amount.toStringAsFixed(2)}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _confidenceColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _confidenceIcon,
+                                size: 14,
+                                color: _confidenceColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${(confidence * 100).round()}%',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _confidenceColor,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    child: ElevatedButton.icon(
-                      onPressed: _saveExpense,
-                      icon: const Icon(Icons.save_rounded,
-                          size: 18, color: Colors.white),
-                      label: Text(
-                        'Save Expense',
-                        style: GoogleFonts.outfit(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Extracted details',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            // Retake
-            TextButton.icon(
-              onPressed: () => context.go('/scanner'),
-              icon: const Icon(Icons.camera_alt_outlined,
-                  size: 16, color: Color(0xFF64748B)),
-              label: Text(
-                'Retake',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF64748B),
-                ),
+                  const SizedBox(height: 8),
+                  AppGroupedSurface(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (var index = 0;
+                            index < _fields.length;
+                            index++) ...[
+                          _FieldRow(
+                            label: _fields[index].key,
+                            value: _fields[index].value,
+                          ),
+                          if (index < _fields.length - 1)
+                            Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: colorScheme.outlineVariant,
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  AppGroupedSurface(
+                    borderColor: colorScheme.primary.withValues(alpha: 0.25),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            confidence < 0.65
+                                ? Icons.rate_review_outlined
+                                : Icons.auto_awesome_rounded,
+                            size: 18,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                confidence < 0.65
+                                    ? 'Please review carefully'
+                                    : 'Ready for review',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                explanation.isEmpty
+                                    ? 'Check the extracted details before saving this expense.'
+                                    : explanation,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                  color: colorScheme.onSurfaceVariant,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              border: Border(
+                top: BorderSide(color: colorScheme.outlineVariant),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryButton(
+                        text: 'Edit',
+                        height: 52,
+                        onPressed: _editDetails,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: PrimaryButton(
+                        text: _isSaving ? 'Saving...' : 'Save Expense',
+                        height: 52,
+                        isLoading: _isSaving,
+                        icon: const Icon(Icons.save_rounded, size: 18),
+                        onPressed: _isSaving ? null : _saveExpense,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                TextButton.icon(
+                  onPressed: () => context.go(AppRoutes.receiptScanner),
+                  icon: Icon(
+                    Icons.camera_alt_outlined,
+                    size: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  label: Text(
+                    'Retake',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Field Cell Widget
-// ─────────────────────────────────────────────────────────────────────────────
-class _FieldCell extends StatelessWidget {
+class _FieldRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _FieldCell({required this.label, required this.value});
+  const _FieldRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF64748B),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF0F172A),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+              ),
             ),
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

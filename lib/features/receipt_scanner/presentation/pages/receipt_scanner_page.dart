@@ -22,6 +22,9 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
   String? _errorMessage;
   bool _flashOn = false;
   bool _isCapturing = false;
+  int _cameraSession = 0;
+  bool _isClosing = false;
+  bool _isDisposing = false;
 
   late final AnimationController _scanLineController;
   late final Animation<double> _scanLineAnimation;
@@ -43,12 +46,17 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
   }
 
   Future<void> _initCamera() async {
+    await _releaseCamera();
+    if (!mounted) return;
+    final session = ++_cameraSession;
+
     setState(() {
       _isInitializing = true;
       _errorMessage = null;
     });
 
     final status = await Permission.camera.request();
+    if (!mounted || session != _cameraSession) return;
     if (!status.isGranted) {
       setState(() {
         _errorMessage = 'Camera permission is required to scan receipts.';
@@ -59,6 +67,7 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
 
     try {
       _cameras = await availableCameras();
+      if (!mounted || session != _cameraSession) return;
       if (_cameras.isEmpty) {
         setState(() {
           _errorMessage = 'No camera available on this device.';
@@ -80,6 +89,10 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
 
       _controller = controller;
       await controller.initialize();
+      if (!mounted || _controller != controller || session != _cameraSession) {
+        await controller.dispose();
+        return;
+      }
       await controller.setFlashMode(FlashMode.off);
 
       if (mounted) {
@@ -95,16 +108,36 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
     }
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  Future<void> _releaseCamera() async {
+    _cameraSession++;
     final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
+    if (controller == null) return;
 
+    if (mounted && !_isDisposing) {
+      setState(() {
+        _controller = null;
+        _flashOn = false;
+      });
+      await WidgetsBinding.instance.endOfFrame;
+    } else {
+      _controller = null;
+      _flashOn = false;
+    }
+
+    await controller.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
-      controller.dispose();
+      await _releaseCamera();
     } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      final controller = _controller;
+      if (controller == null || !controller.value.isInitialized) {
+        await _initCamera();
+      }
     }
   }
 
@@ -126,8 +159,10 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
     setState(() => _isCapturing = true);
     try {
       final file = await controller.takePicture();
+      await _releaseCamera();
       if (mounted) {
-        context.push('/scanner/crop', extra: file.path);
+        await context.push(AppRoutes.receiptCrop, extra: file.path);
+        if (mounted) await _initCamera();
       }
     } on CameraException catch (e) {
       if (mounted) {
@@ -141,178 +176,89 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
   }
 
   Future<void> _pickFromGallery() async {
+    await _releaseCamera();
+    if (!mounted) return;
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null && mounted) {
-      context.push('/scanner/crop', extra: picked.path);
+      await context.push(AppRoutes.receiptCrop, extra: picked.path);
+      if (mounted) await _initCamera();
+    } else if (mounted) {
+      await _initCamera();
     }
+  }
+
+  Future<void> _closeScanner() async {
+    if (_isClosing) return;
+    _isClosing = true;
+    await _releaseCamera();
+    if (mounted) context.safePop(AppRoutes.dashboard);
   }
 
   @override
   void dispose() {
+    _isDisposing = true;
     WidgetsBinding.instance.removeObserver(this);
     _scanLineController.dispose();
-    _controller?.dispose();
+    final controller = _controller;
+    _controller = null;
+    controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Camera preview or loading/error placeholder
-          Positioned.fill(
-            child: _buildCameraPreview(),
-          ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _closeScanner();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            // Camera preview or loading/error placeholder
+            Positioned.fill(
+              child: _buildCameraPreview(),
+            ),
 
-          // Darkened overlay outside the scan frame
-          Positioned.fill(
-            child: _ScanOverlay(),
-          ),
+            // Darkened overlay outside the scan frame
+            Positioned.fill(
+              child: _ScanOverlay(),
+            ),
 
-          // Top bar
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(width: 40),
-                  Text(
-                    'Scan Receipt',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+            // Top bar
+            SafeArea(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(width: 40),
+                    Text(
+                      'Scan Receipt',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () => context.safePop(AppRoutes.dashboard),
-                    child: Container(
+                    Container(
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
+                        color: Colors.black.withValues(alpha: 0.32),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Scan frame + animated line
-          Center(
-            child: _AnimatedScanFrame(scanLineAnimation: _scanLineAnimation),
-          ),
-
-          // Hint text
-          Positioned(
-            bottom: 180,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Text(
-                'Position receipt within the frame',
-                style: GoogleFonts.outfit(
-                  fontSize: 13,
-                  color: Colors.white60,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ),
-
-          // Bottom controls
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Flash toggle
-                    GestureDetector(
-                      onTap: _toggleFlash,
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _flashOn ? Icons.flash_on : Icons.flash_off,
-                          color: _flashOn ? Colors.amber : Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-
-                    // Capture button
-                    GestureDetector(
-                      onTap: _capture,
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: const BoxDecoration(
+                      child: IconButton(
+                        tooltip: 'Close scanner',
+                        padding: EdgeInsets.zero,
+                        onPressed: _closeScanner,
+                        icon: const Icon(
+                          Icons.close_rounded,
                           color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: _isCapturing
-                              ? const SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Color(0xFF2563EB),
-                                  ),
-                                )
-                              : Container(
-                                  width: 56,
-                                  height: 56,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF2563EB),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    color: Colors.white,
-                                    size: 26,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-
-                    // Gallery button
-                    GestureDetector(
-                      onTap: _pickFromGallery,
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.photo_library_outlined,
-                          color: Colors.white,
-                          size: 24,
+                          size: 20,
                         ),
                       ),
                     ),
@@ -320,8 +266,139 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
                 ),
               ),
             ),
-          ),
-        ],
+
+            // Scan frame + animated line
+            Center(
+              child: _AnimatedScanFrame(scanLineAnimation: _scanLineAnimation),
+            ),
+
+            // Hint text
+            Positioned(
+              bottom: 180,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Text(
+                  'Position receipt within the frame',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: Colors.white60,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom controls
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.5),
+                    ],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(48, 36, 48, 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Flash toggle
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.32),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            tooltip:
+                                _flashOn ? 'Turn flash off' : 'Turn flash on',
+                            onPressed: _toggleFlash,
+                            icon: Icon(
+                              _flashOn ? Icons.flash_on : Icons.flash_off,
+                              color: _flashOn ? Colors.amber : Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+
+                        // Capture button
+                        Semantics(
+                          button: true,
+                          label: 'Capture receipt',
+                          child: GestureDetector(
+                            onTap: _capture,
+                            child: Container(
+                              width: 72,
+                              height: 72,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: _isCapturing
+                                    ? const SizedBox(
+                                        width: 28,
+                                        height: 28,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Color(0xFF2563EB),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 56,
+                                        height: 56,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF2563EB),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.camera_alt_rounded,
+                                          color: Colors.white,
+                                          size: 26,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Gallery button
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.32),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            tooltip: 'Choose from gallery',
+                            onPressed: _pickFromGallery,
+                            icon: const Icon(
+                              Icons.photo_library_outlined,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

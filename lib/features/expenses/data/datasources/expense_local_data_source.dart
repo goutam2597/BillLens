@@ -8,10 +8,12 @@ import '../models/expense_model.dart';
 abstract class ExpenseLocalDataSource {
   Future<List<ExpenseModel>> getExpenses();
   Future<ExpenseModel?> getExpenseById(String id);
+  Future<ExpenseModel?> getExpenseByServerId(String serverId);
   Future<List<ExpenseModel>> searchExpenses(String query);
   Future<ExpenseModel> createExpense(ExpenseModel expense);
   Future<ExpenseModel> updateExpense(ExpenseModel expense);
   Future<void> deleteExpense(String id);
+  Future<void> hardDeleteExpense(String id);
 }
 
 @LazySingleton(as: ExpenseLocalDataSource)
@@ -30,6 +32,8 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       amount: Value(model.amount),
       currency: Value(model.currency),
       categoryId: const Value(null),
+      categoryName: Value(model.categoryName),
+      categoryIcon: Value(model.categoryIcon),
       date: Value(model.date),
       paymentMethod: Value(model.paymentMethod),
       clientName: Value(model.clientName),
@@ -54,9 +58,9 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       vendor: data.vendor,
       amount: data.amount,
       currency: data.currency,
-      categoryId: null,
-      categoryName: null,
-      categoryIcon: null,
+      categoryId: data.categoryId?.toString(),
+      categoryName: data.categoryName,
+      categoryIcon: data.categoryIcon,
       date: data.date,
       paymentMethod: data.paymentMethod,
       clientName: data.clientName,
@@ -85,9 +89,19 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
   @override
   Future<ExpenseModel?> getExpenseById(String id) async {
     final query = _db.select(_db.expenses)
-      ..where((tbl) => tbl.localId.equals(id) & tbl.isDeleted.equals(false));
-    final row = await query.getSingleOrNull();
-    return row != null ? _fromData(row) : null;
+      ..where((tbl) => tbl.localId.equals(id) & tbl.isDeleted.equals(false))
+      ..limit(1);
+    final rows = await query.get();
+    return rows.isNotEmpty ? _fromData(rows.first) : null;
+  }
+
+  @override
+  Future<ExpenseModel?> getExpenseByServerId(String serverId) async {
+    final query = _db.select(_db.expenses)
+      ..where((tbl) => tbl.serverId.equals(serverId) & tbl.isDeleted.equals(false))
+      ..limit(1);
+    final rows = await query.get();
+    return rows.isNotEmpty ? _fromData(rows.first) : null;
   }
 
   @override
@@ -112,7 +126,7 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       id: id,
       createdAt: expense.createdAt.isAfter(now) ? expense.createdAt : now,
       updatedAt: now,
-      syncStatus: 'pending',
+      syncStatus: expense.syncStatus.isNotEmpty ? expense.syncStatus : 'pending',
     );
     await _db.into(_db.expenses).insert(_toCompanion(model));
     return model;
@@ -123,9 +137,10 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
     final now = DateTime.now();
     final model = expense.copyWithModel(
       updatedAt: now,
-      syncStatus: 'pending',
+      syncStatus: expense.syncStatus.isNotEmpty ? expense.syncStatus : 'pending',
     );
-    await _db.update(_db.expenses).replace(_toCompanion(model));
+    await (_db.update(_db.expenses)..where((tbl) => tbl.localId.equals(model.id)))
+        .write(_toCompanion(model));
     return model;
   }
 
@@ -139,6 +154,12 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       syncStatus: 'pending',
       updatedAt: now,
     );
-    await _db.update(_db.expenses).replace(_toCompanion(deleted));
+    await (_db.update(_db.expenses)..where((tbl) => tbl.localId.equals(id)))
+        .write(_toCompanion(deleted));
+  }
+
+  @override
+  Future<void> hardDeleteExpense(String id) async {
+    await (_db.delete(_db.expenses)..where((tbl) => tbl.localId.equals(id))).go();
   }
 }

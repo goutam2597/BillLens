@@ -5,71 +5,96 @@ import '../../../../core/errors/exceptions.dart';
 import '../models/expense_model.dart';
 
 abstract class ExpenseRemoteDataSource {
-  Future<List<ExpenseModel>> getExpenses(String userId);
-  Future<ExpenseModel> getExpenseById(String id);
+  Future<List<ExpenseModel>> getExpenses({int page = 1, int limit = 50});
+  Future<ExpenseModel?> getExpenseById(int id);
   Future<ExpenseModel> createExpense(ExpenseModel expense);
-  Future<ExpenseModel> updateExpense(ExpenseModel expense);
-  Future<void> deleteExpense(String id);
+  Future<ExpenseModel> updateExpense(int id, ExpenseModel expense);
+  Future<void> deleteExpense(int id);
 }
 
 @LazySingleton(as: ExpenseRemoteDataSource)
 class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
   final Dio dio;
 
-  ExpenseRemoteDataSourceImpl({required this.dio});
+  ExpenseRemoteDataSourceImpl({@Named('dio') required this.dio});
 
   @override
-  Future<List<ExpenseModel>> getExpenses(String userId) async {
+  Future<List<ExpenseModel>> getExpenses({int page = 1, int limit = 50}) async {
     try {
-      // Backend not implemented yet.
-      await Future.delayed(const Duration(milliseconds: 800));
-      return [];
-    } catch (e) {
-      throw ServerException(e.toString());
+      final response = await dio.get('/api/expenses', queryParameters: {
+        'page': page,
+        'limit': limit,
+      });
+      if (response.statusCode == 200) {
+        final data = response.data['data'] as Map<String, dynamic>;
+        final list = data['data'] as List<dynamic>? ?? [];
+        return list.map((e) => ExpenseModel.fromJson(e as Map<String, dynamic>)).toList();
+      }
+      throw ServerException(response.data['message'] ?? 'Failed to load expenses');
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data['message'] ?? e.message ?? 'Server error',
+      );
     }
   }
 
   @override
-  Future<ExpenseModel> getExpenseById(String id) async {
+  Future<ExpenseModel?> getExpenseById(int id) async {
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      throw ServerException('Expense not found on server');
-    } catch (e) {
-      if (e is ServerException) rethrow;
-      throw ServerException(e.toString());
+      final response = await dio.get('/api/expenses/$id');
+      if (response.statusCode == 200) {
+        final json = response.data['data'] as Map<String, dynamic>;
+        return ExpenseModel.fromJson(json);
+      }
+      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw ServerException(
+        e.response?.data['message'] ?? e.message ?? 'Server error',
+      );
     }
   }
 
   @override
   Future<ExpenseModel> createExpense(ExpenseModel expense) async {
     try {
-      await Future.delayed(const Duration(milliseconds: 800));
-      // Simulate a server-assigned ID.
-      return expense.copyWithModel(
-        serverId: 'srv_${expense.id}',
-        syncStatus: 'synced',
+      final response = await dio.post('/api/expenses', data: expense.toJson());
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final json = response.data['data'] as Map<String, dynamic>;
+        return ExpenseModel.fromJson(json).copyWithModel(syncStatus: 'synced');
+      }
+      throw ServerException(response.data['message'] ?? 'Failed to create expense');
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data['message'] ?? e.message ?? 'Server error',
       );
-    } catch (e) {
-      throw ServerException(e.toString());
     }
   }
 
   @override
-  Future<ExpenseModel> updateExpense(ExpenseModel expense) async {
+  Future<ExpenseModel> updateExpense(int id, ExpenseModel expense) async {
     try {
-      await Future.delayed(const Duration(milliseconds: 800));
-      return expense.copyWithModel(syncStatus: 'synced');
-    } catch (e) {
-      throw ServerException(e.toString());
+      final response = await dio.put('/api/expenses/$id', data: expense.toJson());
+      if (response.statusCode == 200) {
+        final json = response.data['data'] as Map<String, dynamic>;
+        return ExpenseModel.fromJson(json).copyWithModel(syncStatus: 'synced');
+      }
+      throw ServerException(response.data['message'] ?? 'Failed to update expense');
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data['message'] ?? e.message ?? 'Server error',
+      );
     }
   }
 
   @override
-  Future<void> deleteExpense(String id) async {
+  Future<void> deleteExpense(int id) async {
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-    } catch (e) {
-      throw ServerException(e.toString());
+      await dio.delete('/api/expenses/$id');
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data['message'] ?? e.message ?? 'Server error',
+      );
     }
   }
 }

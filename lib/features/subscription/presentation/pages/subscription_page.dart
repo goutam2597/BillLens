@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/theme/app_colors.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
 
 class SubscriptionPage extends StatefulWidget {
   const SubscriptionPage({super.key});
@@ -31,65 +33,48 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textColor =
-        isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final subTextColor =
-        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final colorScheme = Theme.of(context).colorScheme;
+    final textColor = colorScheme.onSurface;
+    final subTextColor = colorScheme.onSurfaceVariant;
 
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: surfaceColor,
-        elevation: 0,
+      backgroundColor: colorScheme.surfaceContainerLowest,
+      appBar: AppPageBar(
+        title: 'Upgrade to Premium',
         leading: IconButton(
           icon: Icon(Icons.close, color: textColor),
+          tooltip: 'Close',
           onPressed: () => context.safePop(AppRoutes.profile),
         ),
-        title: Text(
-          'Upgrade to Premium',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-          ),
-        ),
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Hero Icon
             Container(
-              width: 90,
-              height: 90,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
+                gradient: AppColors.premiumGradient,
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    color: AppColors.warning.withValues(alpha: 0.22),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
               child: const Icon(Icons.workspace_premium,
-                  color: Colors.white, size: 44),
+                  color: Colors.white, size: 36),
             ),
             const SizedBox(height: 20),
             Text(
               'Go Premium',
               style: GoogleFonts.outfit(
-                fontSize: 28,
+                fontSize: 26,
                 fontWeight: FontWeight.w800,
                 color: textColor,
               ),
@@ -106,7 +91,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             const SizedBox(height: 28),
 
             // Free Plan Card
-            _buildFreePlanCard(surfaceColor, textColor, subTextColor, isDark),
+            _buildFreePlanCard(textColor, subTextColor),
             const SizedBox(height: 16),
 
             // Premium Plan Card
@@ -114,7 +99,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             const SizedBox(height: 16),
 
             // Comparison Table
-            _buildComparisonList(surfaceColor, textColor, subTextColor, isDark),
+            _buildComparisonList(textColor, subTextColor),
             const SizedBox(height: 24),
 
             // Restore Purchase
@@ -147,21 +132,44 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
           ],
         ),
       ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              top: BorderSide(color: colorScheme.outlineVariant),
+            ),
+          ),
+          child: PrimaryButton(
+            text: _isYearly ? 'Upgrade Yearly' : 'Upgrade Monthly',
+            icon: const Icon(Icons.workspace_premium_outlined, size: 20),
+            onPressed: _startUpgrade,
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildFreePlanCard(
-      Color surfaceColor, Color textColor, Color subTextColor, bool isDark) {
-    final borderColor =
-        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor, width: 1.5),
+  void _startUpgrade() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Redirecting to payment...',
+          style: GoogleFonts.outfit(color: Colors.white),
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
+    );
+  }
+
+  Widget _buildFreePlanCard(Color textColor, Color subTextColor) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AppGroupedSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -180,10 +188,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF334155)
-                      : const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(20),
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   'Current Plan',
@@ -220,209 +226,137 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   Widget _buildPremiumPlanCard(Color textColor) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(26),
+        color: const Color(0xFF1D3D8F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warning, width: 1.5),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1D3D8F), Color(0xFF312E81)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(23),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Premium',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Premium',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.warning,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'BEST VALUE',
                   style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Billing Toggle
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isYearly = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: !_isYearly ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Monthly',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: !_isYearly
+                              ? const Color(0xFF1D3D8F)
+                              : Colors.white70,
+                        ),
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    'BEST VALUE',
-                    style: GoogleFonts.outfit(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isYearly = true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _isYearly ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Yearly',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _isYearly
+                              ? const Color(0xFF1D3D8F)
+                              : Colors.white70,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+          ),
+          const SizedBox(height: 14),
 
-            // Billing Toggle
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _isYearly = false),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: !_isYearly ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'Monthly',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: !_isYearly
-                                ? const Color(0xFF1D3D8F)
-                                : Colors.white70,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _isYearly = true),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: _isYearly ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'Yearly',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _isYearly
-                                ? const Color(0xFF1D3D8F)
-                                : Colors.white70,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          Text(
+            _isYearly ? '\$79.99 / year' : '\$9.99 / month',
+            style: GoogleFonts.outfit(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
             ),
-            const SizedBox(height: 14),
-
+          ),
+          if (_isYearly)
             Text(
-              _isYearly ? '\$79.99 / year' : '\$9.99 / month',
+              'Save 33% vs monthly',
               style: GoogleFonts.outfit(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
+                fontSize: 12,
+                color: const Color(0xFF10B981),
+                fontWeight: FontWeight.w600,
               ),
             ),
-            if (_isYearly)
-              Text(
-                'Save 33% vs monthly',
-                style: GoogleFonts.outfit(
-                  fontSize: 12,
-                  color: const Color(0xFF10B981),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-            ..._premiumFeatures.map((f) => _buildFeatureRow(
-                  label: f['label'] as String,
-                  included: true,
-                  textColor: Colors.white,
-                  subTextColor: Colors.white60,
-                )),
-            const SizedBox(height: 20),
-
-            // Upgrade Button
-            SizedBox(
-              width: double.infinity,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Redirecting to payment...',
-                          style: GoogleFonts.outfit(color: Colors.white),
-                        ),
-                        backgroundColor: const Color(0xFF10B981),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        margin: const EdgeInsets.all(16),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    'Upgrade Now',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ..._premiumFeatures.map((f) => _buildFeatureRow(
+                label: f['label'] as String,
+                included: true,
+                textColor: Colors.white,
+                subTextColor: Colors.white60,
+              )),
+        ],
       ),
     );
   }
 
-  Widget _buildComparisonList(
-      Color surfaceColor, Color textColor, Color subTextColor, bool isDark) {
-    final borderColor =
-        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+  Widget _buildComparisonList(Color textColor, Color subTextColor) {
+    final borderColor = Theme.of(context).colorScheme.outlineVariant;
     final features = [
       'Unlimited receipt scans',
       'Ad-free experience',
@@ -434,12 +368,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     final freeFeaturesBool = [false, false, false, false, false, false];
     final premiumFeaturesBool = [true, true, true, true, true, true];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
+    return AppGroupedSurface(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           Padding(

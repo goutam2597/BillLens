@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
@@ -74,15 +75,13 @@ class _RegisterPageState extends State<RegisterPage> {
     final textSecondary =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
     final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
-    final surfaceColor =
-        isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight;
-
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: bgColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
+        elevation: 2,
+        scrolledUnderElevation: 4,
+        shadowColor: Colors.black.withValues(alpha: 0.18),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: textPrimary, size: 20),
@@ -106,47 +105,44 @@ class _RegisterPageState extends State<RegisterPage> {
           final isLoading = state is AuthLoading;
           return SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
 
                     Text(
                       'Create Account',
                       style: GoogleFonts.outfit(
                         fontSize: 28,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: textPrimary,
-                        letterSpacing: -0.5,
+                        height: 1.2,
                       ),
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
 
                     Text(
                       'Join BillLens and simplify your expenses',
                       style: GoogleFonts.outfit(
                         fontSize: 14,
                         color: textSecondary,
+                        height: 1.5,
                       ),
                     ),
 
                     const SizedBox(height: 32),
 
                     // Full Name
-                    _buildLabel('Full Name *', textSecondary),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _nameController,
+                    AppTextField(
+                      label: 'Full Name *',
                       hint: 'John Doe',
-                      icon: Icons.person_outline_rounded,
-                      isDark: isDark,
-                      borderColor: borderColor,
-                      surfaceColor: surfaceColor,
-                      textColor: textPrimary,
+                      controller: _nameController,
+                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                      textInputAction: TextInputAction.next,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return 'Full name is required';
@@ -158,17 +154,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 18),
 
                     // Email
-                    _buildLabel('Email Address *', textSecondary),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _emailController,
+                    AppTextField(
+                      label: 'Email Address *',
                       hint: 'you@example.com',
-                      icon: Icons.email_outlined,
-                      isDark: isDark,
-                      borderColor: borderColor,
-                      surfaceColor: surfaceColor,
-                      textColor: textPrimary,
+                      controller: _emailController,
+                      prefixIcon: const Icon(Icons.email_outlined),
                       keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return 'Email is required';
@@ -185,18 +177,17 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 18),
 
                     // Password
-                    _buildLabel('Password *', textSecondary),
-                    const SizedBox(height: 8),
-                    _buildTextField(
+                    AppTextField(
+                      label: 'Password *',
+                      hint: 'Enter your password',
                       controller: _passwordController,
-                      hint: '••••••••',
-                      icon: Icons.lock_outline_rounded,
-                      isDark: isDark,
-                      borderColor: borderColor,
-                      surfaceColor: surfaceColor,
-                      textColor: textPrimary,
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
                       obscureText: _obscurePassword,
-                      suffix: IconButton(
+                      textInputAction: TextInputAction.next,
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Show password'
+                            : 'Hide password',
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_off_outlined
@@ -221,18 +212,16 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 18),
 
                     // Confirm Password
-                    _buildLabel('Confirm Password *', textSecondary),
-                    const SizedBox(height: 8),
-                    _buildTextField(
+                    AppTextField(
+                      label: 'Confirm Password *',
+                      hint: 'Re-enter your password',
                       controller: _confirmPasswordController,
-                      hint: '••••••••',
-                      icon: Icons.lock_outline_rounded,
-                      isDark: isDark,
-                      borderColor: borderColor,
-                      surfaceColor: surfaceColor,
-                      textColor: textPrimary,
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
                       obscureText: _obscureConfirm,
-                      suffix: IconButton(
+                      textInputAction: TextInputAction.next,
+                      suffixIcon: IconButton(
+                        tooltip:
+                            _obscureConfirm ? 'Show password' : 'Hide password',
                         icon: Icon(
                           _obscureConfirm
                               ? Icons.visibility_off_outlined
@@ -257,26 +246,32 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 18),
 
                     // Business Name (optional)
-                    _buildLabel('Business Name (optional)', textSecondary),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _businessController,
+                    AppTextField(
+                      label: 'Business Name (optional)',
                       hint: 'My Company Ltd.',
-                      icon: Icons.business_outlined,
-                      isDark: isDark,
-                      borderColor: borderColor,
-                      surfaceColor: surfaceColor,
-                      textColor: textPrimary,
+                      controller: _businessController,
+                      prefixIcon: const Icon(Icons.business_outlined),
+                      textInputAction: TextInputAction.done,
                     ),
 
                     const SizedBox(height: 18),
 
                     // Currency dropdown
-                    _buildLabel('Currency *', textSecondary),
+                    Text(
+                      'Currency *',
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Container(
+                      height: 56,
                       decoration: BoxDecoration(
-                        color: surfaceColor,
+                        color: isDark
+                            ? AppColors.surfaceDark
+                            : AppColors.surfaceVariantLight,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: borderColor),
                       ),
@@ -321,9 +316,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 36),
 
                     // Create Account button
-                    _RegisterButton(
+                    PrimaryButton(
+                      text: 'Create Account',
                       isLoading: isLoading,
-                      onTap: _handleRegister,
+                      onPressed: _handleRegister,
+                      height: 54,
                     ),
 
                     const SizedBox(height: 28),
@@ -361,126 +358,6 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text, Color color) {
-    return Text(
-      text,
-      style: GoogleFonts.outfit(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: color,
-        letterSpacing: 0.1,
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    required bool isDark,
-    required Color borderColor,
-    required Color surfaceColor,
-    required Color textColor,
-    TextInputType keyboardType = TextInputType.text,
-    bool obscureText = false,
-    Widget? suffix,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      style: GoogleFonts.outfit(fontSize: 15, color: textColor),
-      validator: validator,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.outfit(
-          fontSize: 14,
-          color: isDark ? AppColors.textHintDark : AppColors.textHintLight,
-        ),
-        prefixIcon: Icon(icon,
-            color: isDark ? AppColors.textHintDark : AppColors.textHintLight,
-            size: 20),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: surfaceColor,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.error, width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Register button ───────────────────────────────────────────────────────────
-
-class _RegisterButton extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback onTap;
-
-  const _RegisterButton({required this.isLoading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: isLoading
-              ? const LinearGradient(
-                  colors: [Color(0xFF93C5FD), Color(0xFF60A5FA)])
-              : const LinearGradient(
-                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isLoading ? [] : AppColors.primaryShadow,
-        ),
-        child: Center(
-          child: isLoading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Text(
-                  'Create Account',
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-        ),
       ),
     );
   }

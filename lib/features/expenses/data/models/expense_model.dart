@@ -34,7 +34,7 @@ class ExpenseModel extends Expense {
       serverId: json['server_id']?.toString(),
       userId: json['user_id']?.toString() ?? '',
       vendor: json['vendor'] ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      amount: json['amount'] != null ? double.tryParse(json['amount'].toString()) ?? 0.0 : 0.0,
       currency: json['currency'] ?? 'USD',
       categoryId: json['category_id']?.toString(),
       categoryName: json['category_name']?.toString(),
@@ -48,9 +48,9 @@ class ExpenseModel extends Expense {
       notes: json['notes']?.toString(),
       receiptImageLocalPath: json['receipt_image_local_path']?.toString(),
       receiptImageRemoteUrl: json['receipt_image_remote_url']?.toString(),
-      aiConfidence: (json['ai_confidence'] as num?)?.toDouble(),
+      aiConfidence: json['ai_confidence'] != null ? double.tryParse(json['ai_confidence'].toString()) : null,
       aiExplanation: json['ai_explanation']?.toString(),
-      syncStatus: json['sync_status'] ?? 'pending',
+      syncStatus: json['sync_status'] ?? 'synced',
       isDeleted: json['is_deleted'] == true || json['is_deleted'] == 1,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at']) ?? DateTime.now()

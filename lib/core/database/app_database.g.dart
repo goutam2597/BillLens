@@ -599,6 +599,18 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
   late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
       'category_id', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _categoryNameMeta =
+      const VerificationMeta('categoryName');
+  @override
+  late final GeneratedColumn<String> categoryName = GeneratedColumn<String>(
+      'category_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _categoryIconMeta =
+      const VerificationMeta('categoryIcon');
+  @override
+  late final GeneratedColumn<String> categoryIcon = GeneratedColumn<String>(
+      'category_icon', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
@@ -691,6 +703,8 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         amount,
         currency,
         categoryId,
+        categoryName,
+        categoryIcon,
         date,
         paymentMethod,
         clientName,
@@ -751,6 +765,18 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
           _categoryIdMeta,
           categoryId.isAcceptableOrUnknown(
               data['category_id']!, _categoryIdMeta));
+    }
+    if (data.containsKey('category_name')) {
+      context.handle(
+          _categoryNameMeta,
+          categoryName.isAcceptableOrUnknown(
+              data['category_name']!, _categoryNameMeta));
+    }
+    if (data.containsKey('category_icon')) {
+      context.handle(
+          _categoryIconMeta,
+          categoryIcon.isAcceptableOrUnknown(
+              data['category_icon']!, _categoryIconMeta));
     }
     if (data.containsKey('date')) {
       context.handle(
@@ -847,6 +873,10 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
           .read(DriftSqlType.string, data['${effectivePrefix}currency'])!,
       categoryId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}category_id']),
+      categoryName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category_name']),
+      categoryIcon: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category_icon']),
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       paymentMethod: attachedDatabase.typeMapping
@@ -893,6 +923,8 @@ class Expense extends DataClass implements Insertable<Expense> {
   final double amount;
   final String currency;
   final int? categoryId;
+  final String? categoryName;
+  final String? categoryIcon;
   final DateTime date;
   final String? paymentMethod;
   final String? clientName;
@@ -915,6 +947,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       required this.amount,
       required this.currency,
       this.categoryId,
+      this.categoryName,
+      this.categoryIcon,
       required this.date,
       this.paymentMethod,
       this.clientName,
@@ -946,6 +980,12 @@ class Expense extends DataClass implements Insertable<Expense> {
     map['currency'] = Variable<String>(currency);
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<int>(categoryId);
+    }
+    if (!nullToAbsent || categoryName != null) {
+      map['category_name'] = Variable<String>(categoryName);
+    }
+    if (!nullToAbsent || categoryIcon != null) {
+      map['category_icon'] = Variable<String>(categoryIcon);
     }
     map['date'] = Variable<DateTime>(date);
     if (!nullToAbsent || paymentMethod != null) {
@@ -1000,6 +1040,12 @@ class Expense extends DataClass implements Insertable<Expense> {
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
+      categoryName: categoryName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryName),
+      categoryIcon: categoryIcon == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryIcon),
       date: Value(date),
       paymentMethod: paymentMethod == null && nullToAbsent
           ? const Value.absent()
@@ -1047,6 +1093,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       amount: serializer.fromJson<double>(json['amount']),
       currency: serializer.fromJson<String>(json['currency']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
+      categoryName: serializer.fromJson<String?>(json['categoryName']),
+      categoryIcon: serializer.fromJson<String?>(json['categoryIcon']),
       date: serializer.fromJson<DateTime>(json['date']),
       paymentMethod: serializer.fromJson<String?>(json['paymentMethod']),
       clientName: serializer.fromJson<String?>(json['clientName']),
@@ -1076,6 +1124,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       'amount': serializer.toJson<double>(amount),
       'currency': serializer.toJson<String>(currency),
       'categoryId': serializer.toJson<int?>(categoryId),
+      'categoryName': serializer.toJson<String?>(categoryName),
+      'categoryIcon': serializer.toJson<String?>(categoryIcon),
       'date': serializer.toJson<DateTime>(date),
       'paymentMethod': serializer.toJson<String?>(paymentMethod),
       'clientName': serializer.toJson<String?>(clientName),
@@ -1103,6 +1153,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           double? amount,
           String? currency,
           Value<int?> categoryId = const Value.absent(),
+          Value<String?> categoryName = const Value.absent(),
+          Value<String?> categoryIcon = const Value.absent(),
           DateTime? date,
           Value<String?> paymentMethod = const Value.absent(),
           Value<String?> clientName = const Value.absent(),
@@ -1125,6 +1177,10 @@ class Expense extends DataClass implements Insertable<Expense> {
         amount: amount ?? this.amount,
         currency: currency ?? this.currency,
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
+        categoryName:
+            categoryName.present ? categoryName.value : this.categoryName,
+        categoryIcon:
+            categoryIcon.present ? categoryIcon.value : this.categoryIcon,
         date: date ?? this.date,
         paymentMethod:
             paymentMethod.present ? paymentMethod.value : this.paymentMethod,
@@ -1157,6 +1213,12 @@ class Expense extends DataClass implements Insertable<Expense> {
       currency: data.currency.present ? data.currency.value : this.currency,
       categoryId:
           data.categoryId.present ? data.categoryId.value : this.categoryId,
+      categoryName: data.categoryName.present
+          ? data.categoryName.value
+          : this.categoryName,
+      categoryIcon: data.categoryIcon.present
+          ? data.categoryIcon.value
+          : this.categoryIcon,
       date: data.date.present ? data.date.value : this.date,
       paymentMethod: data.paymentMethod.present
           ? data.paymentMethod.value
@@ -1197,6 +1259,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('amount: $amount, ')
           ..write('currency: $currency, ')
           ..write('categoryId: $categoryId, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('categoryIcon: $categoryIcon, ')
           ..write('date: $date, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('clientName: $clientName, ')
@@ -1224,6 +1288,8 @@ class Expense extends DataClass implements Insertable<Expense> {
         amount,
         currency,
         categoryId,
+        categoryName,
+        categoryIcon,
         date,
         paymentMethod,
         clientName,
@@ -1250,6 +1316,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.amount == this.amount &&
           other.currency == this.currency &&
           other.categoryId == this.categoryId &&
+          other.categoryName == this.categoryName &&
+          other.categoryIcon == this.categoryIcon &&
           other.date == this.date &&
           other.paymentMethod == this.paymentMethod &&
           other.clientName == this.clientName &&
@@ -1274,6 +1342,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<double> amount;
   final Value<String> currency;
   final Value<int?> categoryId;
+  final Value<String?> categoryName;
+  final Value<String?> categoryIcon;
   final Value<DateTime> date;
   final Value<String?> paymentMethod;
   final Value<String?> clientName;
@@ -1296,6 +1366,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.amount = const Value.absent(),
     this.currency = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.categoryName = const Value.absent(),
+    this.categoryIcon = const Value.absent(),
     this.date = const Value.absent(),
     this.paymentMethod = const Value.absent(),
     this.clientName = const Value.absent(),
@@ -1319,6 +1391,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     required double amount,
     this.currency = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.categoryName = const Value.absent(),
+    this.categoryIcon = const Value.absent(),
     required DateTime date,
     this.paymentMethod = const Value.absent(),
     this.clientName = const Value.absent(),
@@ -1344,6 +1418,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<double>? amount,
     Expression<String>? currency,
     Expression<int>? categoryId,
+    Expression<String>? categoryName,
+    Expression<String>? categoryIcon,
     Expression<DateTime>? date,
     Expression<String>? paymentMethod,
     Expression<String>? clientName,
@@ -1367,6 +1443,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (amount != null) 'amount': amount,
       if (currency != null) 'currency': currency,
       if (categoryId != null) 'category_id': categoryId,
+      if (categoryName != null) 'category_name': categoryName,
+      if (categoryIcon != null) 'category_icon': categoryIcon,
       if (date != null) 'date': date,
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (clientName != null) 'client_name': clientName,
@@ -1394,6 +1472,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       Value<double>? amount,
       Value<String>? currency,
       Value<int?>? categoryId,
+      Value<String?>? categoryName,
+      Value<String?>? categoryIcon,
       Value<DateTime>? date,
       Value<String?>? paymentMethod,
       Value<String?>? clientName,
@@ -1416,6 +1496,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       amount: amount ?? this.amount,
       currency: currency ?? this.currency,
       categoryId: categoryId ?? this.categoryId,
+      categoryName: categoryName ?? this.categoryName,
+      categoryIcon: categoryIcon ?? this.categoryIcon,
       date: date ?? this.date,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       clientName: clientName ?? this.clientName,
@@ -1460,6 +1542,12 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     }
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (categoryName.present) {
+      map['category_name'] = Variable<String>(categoryName.value);
+    }
+    if (categoryIcon.present) {
+      map['category_icon'] = Variable<String>(categoryIcon.value);
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
@@ -1516,6 +1604,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('amount: $amount, ')
           ..write('currency: $currency, ')
           ..write('categoryId: $categoryId, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('categoryIcon: $categoryIcon, ')
           ..write('date: $date, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('clientName: $clientName, ')
@@ -3067,6 +3157,8 @@ typedef $$ExpensesTableCreateCompanionBuilder = ExpensesCompanion Function({
   required double amount,
   Value<String> currency,
   Value<int?> categoryId,
+  Value<String?> categoryName,
+  Value<String?> categoryIcon,
   required DateTime date,
   Value<String?> paymentMethod,
   Value<String?> clientName,
@@ -3090,6 +3182,8 @@ typedef $$ExpensesTableUpdateCompanionBuilder = ExpensesCompanion Function({
   Value<double> amount,
   Value<String> currency,
   Value<int?> categoryId,
+  Value<String?> categoryName,
+  Value<String?> categoryIcon,
   Value<DateTime> date,
   Value<String?> paymentMethod,
   Value<String?> clientName,
@@ -3137,6 +3231,12 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<int> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categoryName => $composableBuilder(
+      column: $table.categoryName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categoryIcon => $composableBuilder(
+      column: $table.categoryIcon, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnFilters(column));
@@ -3212,6 +3312,14 @@ class $$ExpensesTableOrderingComposer
 
   ColumnOrderings<int> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categoryName => $composableBuilder(
+      column: $table.categoryName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categoryIcon => $composableBuilder(
+      column: $table.categoryIcon,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnOrderings(column));
@@ -3291,6 +3399,12 @@ class $$ExpensesTableAnnotationComposer
   GeneratedColumn<int> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => column);
 
+  GeneratedColumn<String> get categoryName => $composableBuilder(
+      column: $table.categoryName, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryIcon => $composableBuilder(
+      column: $table.categoryIcon, builder: (column) => column);
+
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
@@ -3362,6 +3476,8 @@ class $$ExpensesTableTableManager extends RootTableManager<
             Value<double> amount = const Value.absent(),
             Value<String> currency = const Value.absent(),
             Value<int?> categoryId = const Value.absent(),
+            Value<String?> categoryName = const Value.absent(),
+            Value<String?> categoryIcon = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<String?> paymentMethod = const Value.absent(),
             Value<String?> clientName = const Value.absent(),
@@ -3385,6 +3501,8 @@ class $$ExpensesTableTableManager extends RootTableManager<
             amount: amount,
             currency: currency,
             categoryId: categoryId,
+            categoryName: categoryName,
+            categoryIcon: categoryIcon,
             date: date,
             paymentMethod: paymentMethod,
             clientName: clientName,
@@ -3408,6 +3526,8 @@ class $$ExpensesTableTableManager extends RootTableManager<
             required double amount,
             Value<String> currency = const Value.absent(),
             Value<int?> categoryId = const Value.absent(),
+            Value<String?> categoryName = const Value.absent(),
+            Value<String?> categoryIcon = const Value.absent(),
             required DateTime date,
             Value<String?> paymentMethod = const Value.absent(),
             Value<String?> clientName = const Value.absent(),
@@ -3431,6 +3551,8 @@ class $$ExpensesTableTableManager extends RootTableManager<
             amount: amount,
             currency: currency,
             categoryId: categoryId,
+            categoryName: categoryName,
+            categoryIcon: categoryIcon,
             date: date,
             paymentMethod: paymentMethod,
             clientName: clientName,

@@ -14,38 +14,32 @@ abstract class AuthRemoteDataSource {
     required String currency,
   });
   Future<void> logout();
+  Future<void> verifyOtp({required String email, required String code});
+  Future<void> resendOtp({required String email});
+  Future<void> resetPassword({required String email});
 }
 
 @LazySingleton(as: AuthRemoteDataSource)
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  final Dio dio;
+  final Dio _dio;
 
-  AuthRemoteDataSourceImpl({required this.dio});
+  AuthRemoteDataSourceImpl(@Named('dio') this._dio);
 
   @override
   Future<UserModel> login(String email, String password) async {
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-      if (email.isEmpty || password.isEmpty) {
-        throw AuthenticationException('Invalid email or password');
+      final response = await _dio.post('/api/login', data: {
+        'email': email,
+        'password': password,
+      });
+      if (response.statusCode == 200) {
+        return _parseAuthResponse(response.data);
       }
-
-      // Mock user response
-      return UserModel(
-        id: 'user_123',
-        name: 'Mock User',
-        email: email,
-        currency: 'USD',
-        subscriptionStatus: 'free',
-        token: 'mock_jwt_token_12345',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      throw AuthenticationException(response.data['message'] ?? 'Login failed');
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data['message'] ?? e.message ?? 'Server error',
       );
-    } catch (e) {
-      if (e is AuthenticationException) rethrow;
-      throw ServerException(e.toString());
     }
   }
 
@@ -58,29 +52,86 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String currency,
   }) async {
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-      // Mock user response
-      return UserModel(
-        id: 'user_123',
-        name: name,
-        email: email,
-        businessName: businessName,
-        currency: currency,
-        subscriptionStatus: 'free',
-        token: 'mock_jwt_token_12345',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      final response = await _dio.post('/api/register', data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'business_name': businessName,
+        'currency': currency,
+      });
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return _parseAuthResponse(response.data);
+      }
+      throw ServerException(
+        response.data['message'] ?? 'Registration failed',
       );
-    } catch (e) {
-      throw ServerException(e.toString());
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data['message'] ?? e.message ?? 'Server error',
+      );
     }
+  }
+
+  UserModel _parseAuthResponse(Map<String, dynamic> body) {
+    final data = body['data'] as Map<String, dynamic>?;
+    if (data == null) throw ServerException('Invalid response format');
+    final userJson = data['user'] as Map<String, dynamic>? ?? {};
+    final token = data['token'] as String?;
+    final model = UserModel.fromJson(userJson);
+    if (token != null) {
+      return UserModel(
+        id: model.id,
+        name: model.name,
+        email: model.email,
+        businessName: model.businessName,
+        currency: model.currency,
+        token: token,
+        subscriptionStatus: model.subscriptionStatus,
+        createdAt: model.createdAt,
+        updatedAt: model.updatedAt,
+      );
+    }
+    return model;
   }
 
   @override
   Future<void> logout() async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      await _dio.post('/api/logout');
+    } on DioException catch (e) {
+      throw ServerException(e.message ?? 'Logout failed');
+    }
+  }
+
+  @override
+  Future<void> verifyOtp({required String email, required String code}) async {
+    try {
+      await _dio.post('/api/verify-otp', data: {
+        'email': email,
+        'code': code,
+      });
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.data['message'] ?? 'OTP verification failed',
+      );
+    }
+  }
+
+  @override
+  Future<void> resendOtp({required String email}) async {
+    try {
+      await _dio.post('/api/resend-otp', data: {'email': email});
+    } on DioException catch (e) {
+      throw ServerException(e.message ?? 'Resend OTP failed');
+    }
+  }
+
+  @override
+  Future<void> resetPassword({required String email}) async {
+    try {
+      await _dio.post('/api/reset-password', data: {'email': email});
+    } on DioException catch (e) {
+      throw ServerException(e.message ?? 'Password reset failed');
+    }
   }
 }

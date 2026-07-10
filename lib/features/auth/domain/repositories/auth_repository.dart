@@ -19,4 +19,13 @@ abstract class AuthRepository {
   Future<Either<Failure, void>> logout();
 
   Future<Either<Failure, UserEntity?>> getCurrentUser();
+
+  Future<Either<Failure, void>> verifyOtp({
+    required String email,
+    required String code,
+  });
+
+  Future<Either<Failure, void>> resendOtp({required String email});
+
+  Future<Either<Failure, void>> resetPassword({required String email});
 }

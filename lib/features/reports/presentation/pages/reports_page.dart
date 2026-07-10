@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/theme/app_colors.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -78,63 +80,48 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final bgColor =
+        isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final surfaceColor =
+        isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
     final textColor =
-        isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: surfaceColor,
-        elevation: 0,
-        title: Text(
-          'Reports',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-          ),
-        ),
-        centerTitle: false,
-      ),
+      appBar: const AppPageBar(title: 'Reports'),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const AppSectionHeader(title: 'Reporting period'),
+            const SizedBox(height: 8),
             _buildDateRangeSelector(surfaceColor, textColor, isDark),
-            const SizedBox(height: 20),
-            Text(
-              'Select Report Type',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
+            const AppSectionHeader(title: 'Report type'),
+            const SizedBox(height: 8),
             _buildReportGrid(surfaceColor, textColor),
             const SizedBox(height: 24),
-            Text(
-              'Export Reports',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textColor,
+            const AppSectionHeader(title: 'Export'),
+            const SizedBox(height: 8),
+            AppGroupedSurface(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _buildExportButton(
+                    label: 'Export as PDF',
+                    icon: Icons.picture_as_pdf_outlined,
+                    color: AppColors.error,
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _buildExportButton(
+                    label: 'Export as CSV',
+                    icon: Icons.table_chart_outlined,
+                    color: AppColors.accent,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
-            _buildExportButton(
-              label: 'Export as PDF',
-              icon: Icons.picture_as_pdf,
-              color: const Color(0xFFEF4444),
-            ),
-            const SizedBox(height: 10),
-            _buildExportButton(
-              label: 'Export as CSV',
-              icon: Icons.table_chart,
-              color: const Color(0xFF10B981),
             ),
             const SizedBox(height: 24),
             _buildAdBanner(isDark),
@@ -149,65 +136,72 @@ class _ReportsPageState extends State<ReportsPage> {
       Color surfaceColor, Color textColor, bool isDark) {
     final borderColor =
         isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-      ),
+    return AppGroupedSurface(
+      borderColor: borderColor,
       child: Row(
         children: [
-          const Icon(Icons.date_range, color: Color(0xFF2563EB), size: 20),
-          const SizedBox(width: 8),
-          Text(
-            'Period: ',
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: textColor,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: const Icon(Icons.date_range_outlined,
+                color: AppColors.primary, size: 20),
           ),
+          const SizedBox(width: 12),
           Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: _selectedMonth,
-                isDense: true,
-                dropdownColor: surfaceColor,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2563EB),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedMonth,
+                      isExpanded: true,
+                      isDense: true,
+                      dropdownColor: surfaceColor,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                      items: List.generate(12, (i) => i + 1).map((m) {
+                        return DropdownMenuItem(
+                          value: m,
+                          child: Text(_months[m - 1]),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedMonth = val);
+                        }
+                      },
+                    ),
+                  ),
                 ),
-                items: List.generate(12, (i) => i + 1).map((m) {
-                  return DropdownMenuItem(
-                    value: m,
-                    child: Text(_months[m - 1]),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedMonth = val);
-                },
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              value: _selectedYear,
-              isDense: true,
-              dropdownColor: surfaceColor,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF2563EB),
-              ),
-              items: [2023, 2024, 2025, 2026].map((y) {
-                return DropdownMenuItem(value: y, child: Text('$y'));
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) setState(() => _selectedYear = val);
-              },
+                const SizedBox(width: 8),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _selectedYear,
+                    isDense: true,
+                    dropdownColor: surfaceColor,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
+                    items: [2023, 2024, 2025, 2026].map((y) {
+                      return DropdownMenuItem(value: y, child: Text('$y'));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedYear = val);
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -216,27 +210,27 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Widget _buildReportGrid(Color surfaceColor, Color textColor) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
+    return AppGroupedSurface(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: _reportTypes.asMap().entries.map((entry) {
+          final report = entry.value;
+          return Column(
+            children: [
+              _buildReportCard(
+                title: report['title'] as String,
+                icon: report['icon'] as IconData,
+                color: report['color'] as Color,
+                bgColor: report['bgColor'] as Color,
+                surfaceColor: surfaceColor,
+                textColor: textColor,
+              ),
+              if (entry.key < _reportTypes.length - 1)
+                const Divider(height: 1, indent: 64),
+            ],
+          );
+        }).toList(),
       ),
-      itemCount: _reportTypes.length,
-      itemBuilder: (context, index) {
-        final report = _reportTypes[index];
-        return _buildReportCard(
-          title: report['title'] as String,
-          icon: report['icon'] as IconData,
-          color: report['color'] as Color,
-          bgColor: report['bgColor'] as Color,
-          surfaceColor: surfaceColor,
-          textColor: textColor,
-        );
-      },
     );
   }
 
@@ -248,65 +242,39 @@ class _ReportsPageState extends State<ReportsPage> {
     required Color surfaceColor,
     required Color textColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: _showGeneratingSnackBar,
-              style: TextButton.styleFrom(
-                backgroundColor: color.withValues(alpha: 0.1),
-                foregroundColor: color,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+    return InkWell(
+      onTap: _showGeneratingSnackBar,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: Icon(icon, color: color, size: 21),
+            ),
+            const SizedBox(height: 12),
+            const SizedBox(width: 12),
+            Expanded(
               child: Text(
-                'Generate',
+                title,
                 style: GoogleFonts.outfit(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
+                  color: textColor,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-        ],
+            Icon(Icons.chevron_right_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ],
+        ),
       ),
     );
   }
@@ -316,25 +284,28 @@ class _ReportsPageState extends State<ReportsPage> {
     required IconData icon,
     required Color color,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: _showGeneratingSnackBar,
-        icon: Icon(icon, color: color, size: 20),
-        label: Text(
-          label,
-          style: GoogleFonts.outfit(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          side: BorderSide(color: color, width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+    return InkWell(
+      onTap: _showGeneratingSnackBar,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            Icon(Icons.download_rounded,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ],
         ),
       ),
     );

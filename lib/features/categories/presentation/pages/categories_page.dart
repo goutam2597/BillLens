@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/theme/app_colors.dart';
+import 'package:billlens/core/widgets/app_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Category model
@@ -118,48 +120,30 @@ class _CategoriesPageState extends State<CategoriesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor =
+        isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+      backgroundColor: backgroundColor,
+      appBar: AppPageBar(
+        title: 'Categories',
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF0F172A), size: 20),
+          icon: const Icon(Icons.arrow_back_rounded, size: 22),
           onPressed: () => context.safePop(AppRoutes.dashboard),
+          tooltip: 'Back',
         ),
-        title: Text(
-          'Categories',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded,
-                color: Color(0xFF2563EB), size: 24),
+            icon: const Icon(Icons.add_rounded, size: 24),
             onPressed: _showAddSheet,
+            tooltip: 'Add category',
           ),
+          const SizedBox(width: 4),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: const Color(0xFFE2E8F0)),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddSheet,
-        backgroundColor: const Color(0xFF2563EB),
-        elevation: 4,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
-          // Stats row
           Row(
             children: [
               _StatChip(
@@ -171,7 +155,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
               _StatChip(
                 label: 'Business',
                 value: '${_business.length}',
-                color: const Color(0xFF7C3AED),
+                color: AppColors.primary,
               ),
               const SizedBox(width: 10),
               _StatChip(
@@ -182,36 +166,47 @@ class _CategoriesPageState extends State<CategoriesPage> {
             ],
           ),
           const SizedBox(height: 24),
-
-          // Business section
-          _SectionHeader(
-            title: 'Business',
-            count: _business.length,
-            color: const Color(0xFF2563EB),
-          ),
-          const SizedBox(height: 12),
-          ..._business.map(
-            (cat) => _CategoryTile(
-              category: cat,
-              onDelete: () => _deleteCategory(cat),
-              onEdit: () => _showAddSheet(),
+          AppSectionHeader(title: 'Business (${_business.length})'),
+          const SizedBox(height: 8),
+          AppGroupedSurface(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: _business.asMap().entries.map((entry) {
+                final cat = entry.value;
+                return Column(
+                  children: [
+                    _CategoryTile(
+                      category: cat,
+                      onDelete: () => _deleteCategory(cat),
+                      onEdit: () => _showAddSheet(),
+                    ),
+                    if (entry.key < _business.length - 1)
+                      const Divider(height: 1, indent: 72),
+                  ],
+                );
+              }).toList(),
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // Personal section
-          _SectionHeader(
-            title: 'Personal',
-            count: _personal.length,
-            color: const Color(0xFF10B981),
-          ),
-          const SizedBox(height: 12),
-          ..._personal.map(
-            (cat) => _CategoryTile(
-              category: cat,
-              onDelete: () => _deleteCategory(cat),
-              onEdit: () => _showAddSheet(),
+          AppSectionHeader(title: 'Personal (${_personal.length})'),
+          const SizedBox(height: 8),
+          AppGroupedSurface(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: _personal.asMap().entries.map((entry) {
+                final cat = entry.value;
+                return Column(
+                  children: [
+                    _CategoryTile(
+                      category: cat,
+                      onDelete: () => _deleteCategory(cat),
+                      onEdit: () => _showAddSheet(),
+                    ),
+                    if (entry.key < _personal.length - 1)
+                      const Divider(height: 1, indent: 72),
+                  ],
+                );
+              }).toList(),
             ),
           ),
         ],
@@ -236,13 +231,14 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(color: colorScheme.outlineVariant),
         ),
         child: Column(
           children: [
@@ -258,69 +254,13 @@ class _StatChip extends StatelessWidget {
               label,
               style: GoogleFonts.outfit(
                 fontSize: 11,
-                color: color.withValues(alpha: 0.8),
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Section Header
-// ─────────────────────────────────────────────────────────────────────────────
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final int count;
-  final Color color;
-
-  const _SectionHeader({
-    required this.title,
-    required this.count,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: GoogleFonts.outfit(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            '$count',
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -341,20 +281,9 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           // Colored circle with initial
@@ -387,28 +316,16 @@ class _CategoryTile extends StatelessWidget {
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0F172A),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 3),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: category.type == 'Business'
-                        ? const Color(0xFFEFF6FF)
-                        : const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    category.type,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: category.type == 'Business'
-                          ? const Color(0xFF2563EB)
-                          : const Color(0xFF10B981),
-                    ),
+                Text(
+                  category.type,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -416,9 +333,10 @@ class _CategoryTile extends StatelessWidget {
           ),
           // Edit
           IconButton(
-            icon: const Icon(Icons.edit_outlined,
-                size: 18, color: Color(0xFF64748B)),
+            icon: Icon(Icons.edit_outlined,
+                size: 18, color: colorScheme.onSurfaceVariant),
             onPressed: onEdit,
+            tooltip: 'Edit category',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           ),
@@ -461,6 +379,7 @@ class _CategoryTile extends StatelessWidget {
                 ),
               );
             },
+            tooltip: 'Delete category',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           ),
@@ -507,11 +426,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottomInset),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      padding: EdgeInsets.fromLTRB(16, 20, 16, 24 + bottomInset),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -523,7 +443,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
+                color: colorScheme.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -536,7 +456,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF0F172A),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 20),
@@ -544,21 +464,21 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
           // Name field
           TextField(
             controller: _nameController,
-            style: GoogleFonts.outfit(
-                fontSize: 14, color: const Color(0xFF0F172A)),
+            style:
+                GoogleFonts.outfit(fontSize: 14, color: colorScheme.onSurface),
             decoration: InputDecoration(
               labelText: 'Category Name',
               labelStyle: GoogleFonts.outfit(
-                  fontSize: 13, color: const Color(0xFF64748B)),
+                  fontSize: 13, color: colorScheme.onSurfaceVariant),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -577,7 +497,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
             style: GoogleFonts.outfit(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF64748B),
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 10),
@@ -594,12 +514,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
                     decoration: BoxDecoration(
                       color: selected
                           ? const Color(0xFF2563EB)
-                          : const Color(0xFFF8FAFC),
+                          : colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: selected
                             ? const Color(0xFF2563EB)
-                            : const Color(0xFFE2E8F0),
+                            : colorScheme.outlineVariant,
                       ),
                     ),
                     child: Center(
@@ -608,8 +528,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color:
-                              selected ? Colors.white : const Color(0xFF64748B),
+                          color: selected
+                              ? Colors.white
+                              : colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -626,7 +547,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
             style: GoogleFonts.outfit(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF64748B),
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 10),
@@ -668,32 +589,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
           const SizedBox(height: 24),
 
           // Save button
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-              ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: ElevatedButton(
-              onPressed: _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Text(
-                'Save Category',
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
+          PrimaryButton(
+            text: 'Save Category',
+            onPressed: _save,
           ),
         ],
       ),

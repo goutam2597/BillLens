@@ -2,6 +2,170 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 
+class AppPageBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final List<Widget>? actions;
+  final bool automaticallyImplyLeading;
+  final Widget? leading;
+
+  const AppPageBar({
+    super.key,
+    required this.title,
+    this.actions,
+    this.automaticallyImplyLeading = true,
+    this.leading,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      automaticallyImplyLeading: automaticallyImplyLeading,
+      leading: leading,
+      titleSpacing: automaticallyImplyLeading ? 0 : 16,
+      centerTitle: false,
+      title: Text(
+        title,
+        style: GoogleFonts.outfit(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
+      actions: actions,
+      elevation: 2,
+      scrolledUnderElevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.18),
+      surfaceTintColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+    );
+  }
+}
+
+class AppRootSliverBar extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final List<Widget>? actions;
+  final double toolbarHeight;
+
+  const AppRootSliverBar({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.actions,
+    this.toolbarHeight = kToolbarHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SliverAppBar(
+      pinned: true,
+      automaticallyImplyLeading: false,
+      toolbarHeight: toolbarHeight,
+      titleSpacing: 16,
+      backgroundColor: colorScheme.surface,
+      foregroundColor: colorScheme.onSurface,
+      surfaceTintColor: colorScheme.surface,
+      elevation: 2,
+      scrolledUnderElevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.18),
+      title: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (subtitle != null)
+            Text(
+              subtitle!,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+      actions: actions,
+    );
+  }
+}
+
+class AppSectionHeader extends StatelessWidget {
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const AppSectionHeader({
+    super.key,
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+        if (actionLabel != null)
+          TextButton(
+            onPressed: onAction,
+            child: Text(actionLabel!),
+          ),
+      ],
+    );
+  }
+}
+
+class AppGroupedSurface extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color? borderColor;
+
+  const AppGroupedSurface({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor ?? colorScheme.outlineVariant),
+      ),
+      child: child,
+    );
+  }
+}
+
 /// Primary gradient button used throughout the app
 class PrimaryButton extends StatelessWidget {
   final String text;

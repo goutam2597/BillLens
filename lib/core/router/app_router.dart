@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'app_routes.dart';
 import 'main_shell.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
@@ -12,6 +13,7 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/expenses/presentation/pages/expense_list_page.dart';
 import '../../features/expenses/presentation/pages/expense_details_page.dart';
 import '../../features/expenses/presentation/pages/add_expense_page.dart';
+import '../../features/expenses/domain/entities/expense.dart';
 import '../../features/receipt_scanner/presentation/pages/receipt_scanner_page.dart';
 import '../../features/receipt_scanner/presentation/pages/receipt_crop_page.dart';
 import '../../features/receipt_scanner/presentation/pages/ai_processing_page.dart';
@@ -21,13 +23,78 @@ import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/subscription/presentation/pages/subscription_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
+import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/sync/presentation/pages/sync_status_page.dart';
+import '../../features/help_support/presentation/pages/help_support_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Public paths accessible without authentication
+const _publicPaths = [
+  '/',
+  '/onboarding',
+  '/welcome',
+  '/login',
+  '/register',
+  '/otp',
+  '/forgot-password',
+];
+
+// Secure storage for token checks
+final _secureStorage = FlutterSecureStorage();
+
+Future<bool> _isAuthenticated() async {
+  final token = await _secureStorage.read(key: 'auth_token');
+  return token != null && token.isNotEmpty;
+}
+
+Future<bool> _onboardingComplete() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool('onboarding_complete') ?? false;
+}
 
 class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
+    redirect: (context, state) async {
+      final location = state.uri.toString();
+      final isPublic = _publicPaths.any((p) => location == p);
+      final isGoingToSplash = location == AppRoutes.splash ||
+          location == '/';
+
+      // Always allow splash
+      if (isGoingToSplash) return null;
+
+      // Check onboarding
+      final onboardingDone = await _onboardingComplete();
+
+      // If not completed onboarding and not on onboarding/welcome/auth paths
+      if (!onboardingDone) {
+        if (location != AppRoutes.onboarding &&
+            location != AppRoutes.welcome &&
+            location != AppRoutes.login &&
+            location != AppRoutes.register &&
+            location != AppRoutes.otp) {
+          return AppRoutes.onboarding;
+        }
+        return null;
+      }
+
+      // Check auth
+      final authenticated = await _isAuthenticated();
+
+      if (!authenticated && !isPublic) {
+        return AppRoutes.welcome;
+      }
+
+      if (authenticated && isPublic) {
+        return AppRoutes.dashboard;
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: AppRoutes.splash,
@@ -61,7 +128,6 @@ class AppRouter {
       ),
 
       // Main tab shell: Home, Expenses, Analytics, Profile.
-      // The persistent bottom navigation bar lives in [MainShell].
       StatefulShellRoute.indexedStack(
         branches: [
           StatefulShellBranch(
@@ -108,7 +174,14 @@ class AppRouter {
       GoRoute(
         path: '/expenses/add',
         name: 'addExpense',
-        builder: (context, state) => const AddExpensePage(),
+        builder: (context, state) =>
+            AddExpensePage(expense: state.extra as Expense?),
+      ),
+      GoRoute(
+        path: '/expenses/:id/edit',
+        name: 'editExpense',
+        builder: (context, state) =>
+            AddExpensePage(expense: state.extra as Expense?),
       ),
       GoRoute(
         path: '/expenses/:id',
@@ -134,12 +207,18 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.aiProcessing,
         name: 'aiProcessing',
-        builder: (context, state) => const AiProcessingPage(),
+        builder: (context, state) {
+          final imagePath = state.extra as String? ?? '';
+          return AiProcessingPage(imagePath: imagePath);
+        },
       ),
       GoRoute(
         path: AppRoutes.receiptResult,
         name: 'receiptResult',
-        builder: (context, state) => const ReceiptResultPage(),
+        builder: (context, state) {
+          final data = state.extra;
+          return ReceiptResultPage(processingResult: data);
+        },
       ),
       GoRoute(
         path: AppRoutes.categories,
@@ -157,6 +236,16 @@ class AppRouter {
         builder: (context, state) => const SubscriptionPage(),
       ),
       GoRoute(
+        path: AppRoutes.editProfile,
+        name: 'editProfile',
+        builder: (context, state) => const EditProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.changePassword,
+        name: 'changePassword',
+        builder: (context, state) => const ChangePasswordPage(),
+      ),
+      GoRoute(
         path: AppRoutes.settings,
         name: 'settings',
         builder: (context, state) => const SettingsPage(),
@@ -165,6 +254,11 @@ class AppRouter {
         path: AppRoutes.syncStatus,
         name: 'syncStatus',
         builder: (context, state) => const SyncStatusPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.helpSupport,
+        name: 'helpSupport',
+        builder: (context, state) => const HelpSupportPage(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

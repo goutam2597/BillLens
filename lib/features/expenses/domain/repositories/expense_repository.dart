@@ -10,4 +10,5 @@ abstract class ExpenseRepository {
   Future<Either<Failure, Expense>> createExpense(Expense expense);
   Future<Either<Failure, Expense>> updateExpense(Expense expense);
   Future<Either<Failure, void>> deleteExpense(String id);
+  Future<Either<Failure, int>> syncPendingExpenses();
 }
