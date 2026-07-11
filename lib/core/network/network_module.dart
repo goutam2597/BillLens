@@ -11,7 +11,7 @@ abstract class NetworkModule {
   Dio dio(AuthInterceptor authInterceptor) {
     final dio = Dio(
       BaseOptions(
-        baseUrl: 'http://192.168.0.173/billlens/backend/public',
+        baseUrl: 'http://192.168.0.187/billlens/billlens_backend/public',
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         headers: {

@@ -13,6 +13,7 @@ abstract class AuthRemoteDataSource {
     String? businessName,
     required String currency,
   });
+  Future<UserModel> googleLogin(String idToken);
   Future<void> logout();
   Future<void> verifyOtp({required String email, required String code});
   Future<void> resendOtp({required String email});
@@ -38,7 +39,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw AuthenticationException(response.data['message'] ?? 'Login failed');
     } on DioException catch (e) {
       throw ServerException(
-        e.response?.data['message'] ?? e.message ?? 'Server error',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
       );
     }
   }
@@ -67,7 +68,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
     } on DioException catch (e) {
       throw ServerException(
-        e.response?.data['message'] ?? e.message ?? 'Server error',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
       );
     }
   }
@@ -82,11 +83,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return UserModel(
         id: model.id,
         name: model.name,
+        firstName: model.firstName,
+        lastName: model.lastName,
         email: model.email,
+        phone: model.phone,
         businessName: model.businessName,
+        address: model.address,
+        city: model.city,
+        state: model.state,
+        zip: model.zip,
+        avatarUrl: model.avatarUrl,
         currency: model.currency,
         token: token,
         subscriptionStatus: model.subscriptionStatus,
+        subscriptionExpiry: model.subscriptionExpiry,
         createdAt: model.createdAt,
         updatedAt: model.updatedAt,
       );
@@ -104,6 +114,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<UserModel> googleLogin(String idToken) async {
+    try {
+      final response = await _dio.post('/api/google-login', data: {
+        'id_token': idToken,
+      });
+      if (response.statusCode == 200) {
+        return _parseAuthResponse(response.data);
+      }
+      throw AuthenticationException(
+        response.data['message'] ?? 'Google login failed',
+      );
+    } on DioException catch (e) {
+      throw ServerException(
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
+      );
+    }
+  }
+
+  @override
   Future<void> verifyOtp({required String email, required String code}) async {
     try {
       await _dio.post('/api/verify-otp', data: {
@@ -112,7 +141,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       });
     } on DioException catch (e) {
       throw ServerException(
-        e.response?.data['message'] ?? 'OTP verification failed',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? 'OTP verification failed',
       );
     }
   }

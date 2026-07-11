@@ -128,6 +128,10 @@ class ReceiptProcessingBloc
         final paymentMethod = data['payment_method'] as String?;
         final taxAmount = (data['tax_amount'] as num?)?.toDouble() ?? 0.0;
         final receiptUrl = data['receipt_url'] as String? ?? event.imagePath;
+        final isDuplicate = data['is_duplicate'] as bool? ?? false;
+        final duplicateReason = data['duplicate_reason'] as String?;
+        final documentType = data['document_type'] as String? ?? 'receipt';
+        final receiptNumber = data['receipt_number'] as String?;
 
         // ── Step 6: Categorizing ──────────────────────────────────────
         emit(const ProcessingStep(
@@ -150,6 +154,10 @@ class ReceiptProcessingBloc
           paymentMethod: paymentMethod,
           taxAmount: taxAmount,
           receiptUrl: receiptUrl,
+          isDuplicate: isDuplicate,
+          duplicateReason: duplicateReason,
+          documentType: documentType,
+          receiptNumber: receiptNumber,
         ));
       } else {
         emit(ProcessingError(

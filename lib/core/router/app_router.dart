@@ -5,15 +5,14 @@ import 'app_routes.dart';
 import 'main_shell.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
-import '../../features/auth/presentation/pages/welcome_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/otp_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/expenses/presentation/pages/expense_list_page.dart';
 import '../../features/expenses/presentation/pages/expense_details_page.dart';
-import '../../features/expenses/presentation/pages/add_expense_page.dart';
-import '../../features/expenses/domain/entities/expense.dart';
+import 'package:billlens/features/expenses/presentation/pages/add_expense_page.dart';
+import 'package:billlens/features/expenses/domain/entities/expense.dart';
 import '../../features/receipt_scanner/presentation/pages/receipt_scanner_page.dart';
 import '../../features/receipt_scanner/presentation/pages/receipt_crop_page.dart';
 import '../../features/receipt_scanner/presentation/pages/ai_processing_page.dart';
@@ -34,7 +33,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _publicPaths = [
   '/',
   '/onboarding',
-  '/welcome',
   '/login',
   '/register',
   '/otp',
@@ -61,8 +59,7 @@ class AppRouter {
     redirect: (context, state) async {
       final location = state.uri.toString();
       final isPublic = _publicPaths.any((p) => location == p);
-      final isGoingToSplash = location == AppRoutes.splash ||
-          location == '/';
+      final isGoingToSplash = location == AppRoutes.splash || location == '/';
 
       // Always allow splash
       if (isGoingToSplash) return null;
@@ -73,7 +70,6 @@ class AppRouter {
       // If not completed onboarding and not on onboarding/welcome/auth paths
       if (!onboardingDone) {
         if (location != AppRoutes.onboarding &&
-            location != AppRoutes.welcome &&
             location != AppRoutes.login &&
             location != AppRoutes.register &&
             location != AppRoutes.otp) {
@@ -86,7 +82,7 @@ class AppRouter {
       final authenticated = await _isAuthenticated();
 
       if (!authenticated && !isPublic) {
-        return AppRoutes.welcome;
+        return AppRoutes.login;
       }
 
       if (authenticated && isPublic) {
@@ -105,11 +101,6 @@ class AppRouter {
         path: AppRoutes.onboarding,
         name: 'onboarding',
         builder: (context, state) => const OnboardingPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.welcome,
-        name: 'welcome',
-        builder: (context, state) => const WelcomePage(),
       ),
       GoRoute(
         path: AppRoutes.login,

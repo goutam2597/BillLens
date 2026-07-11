@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
+import 'package:billlens/core/utils/app_utils.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../expenses/domain/entities/expense.dart';
@@ -137,7 +138,7 @@ class _DashboardPageState extends State<DashboardPage>
                         const SizedBox(height: 24),
                         _buildAnimatedSlideUp(
                             _buildAdBanner(isDark, textSecondary), 9),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 150),
                       ],
                     ),
                   ),
@@ -261,7 +262,7 @@ class _DashboardPageState extends State<DashboardPage>
           ),
           const SizedBox(height: 12),
           Text(
-            '\$${total.toStringAsFixed(2)}',
+            AppUtils.formatCurrency(total),
             style: GoogleFonts.outfit(
               fontSize: 38,
               height: 1,
@@ -283,7 +284,7 @@ class _DashboardPageState extends State<DashboardPage>
               Expanded(
                 child: _SummaryStat(
                   icon: Icons.analytics_outlined,
-                  value: '\$${average.toStringAsFixed(2)}',
+                  value: AppUtils.formatCurrency(average),
                   label: 'average',
                   color: Colors.white,
                 ),
@@ -699,7 +700,9 @@ class _ExpenseCardState extends State<ExpenseCard>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('\$${widget.expense.amount.toStringAsFixed(2)}',
+                  Text(
+                      AppUtils.formatCurrency(widget.expense.amount,
+                          currency: widget.expense.currency),
                       style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,

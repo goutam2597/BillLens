@@ -238,8 +238,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       image: FileImage(_pickedImage!),
                                       fit: BoxFit.cover,
                                     )
-                                  : null,
-                              gradient: _pickedImage == null
+                                  : (user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                                      ? DecorationImage(
+                                          image: NetworkImage(user.avatarUrl!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null),
+                              gradient: _pickedImage == null && (user.avatarUrl == null || user.avatarUrl!.isEmpty)
                                   ? const LinearGradient(
                                       colors: [
                                         Color(0xFF2563EB),
@@ -250,7 +255,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                     )
                                   : null,
                             ),
-                            child: _pickedImage == null
+                            child: _pickedImage == null && (user.avatarUrl == null || user.avatarUrl!.isEmpty)
                                 ? Center(
                                     child: Text(
                                       user.initials,

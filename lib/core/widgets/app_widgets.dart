@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_utils.dart';
 
 class AppPageBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -49,6 +50,7 @@ class AppRootSliverBar extends StatelessWidget {
   final String? subtitle;
   final List<Widget>? actions;
   final double toolbarHeight;
+  final PreferredSizeWidget? bottom;
 
   const AppRootSliverBar({
     super.key,
@@ -56,6 +58,7 @@ class AppRootSliverBar extends StatelessWidget {
     this.subtitle,
     this.actions,
     this.toolbarHeight = kToolbarHeight,
+    this.bottom,
   });
 
   @override
@@ -98,6 +101,7 @@ class AppRootSliverBar extends StatelessWidget {
         ],
       ),
       actions: actions,
+      bottom: bottom,
     );
   }
 }
@@ -362,7 +366,7 @@ class ExpenseCard extends StatelessWidget {
   final String date;
   final Color categoryColor;
   final String categoryIcon;
-  final String currency;
+  final String? currency;
   final VoidCallback? onTap;
 
   const ExpenseCard({
@@ -373,7 +377,7 @@ class ExpenseCard extends StatelessWidget {
     required this.date,
     this.categoryColor = AppColors.primary,
     this.categoryIcon = '📎',
-    this.currency = '\$',
+    this.currency,
     this.onTap,
   });
 
@@ -445,11 +449,11 @@ class ExpenseCard extends StatelessWidget {
               ),
             ),
             // Amount and date
-            Column(
+              Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '$currency${amount.toStringAsFixed(2)}',
+                  AppUtils.formatCurrency(amount, currency: currency),
                   style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

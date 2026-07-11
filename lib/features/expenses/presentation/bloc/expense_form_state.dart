@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/expense.dart';
+import 'package:billlens/core/di/injection.dart';
+import 'package:billlens/core/local/local_storage_service.dart';
 
 class ExpenseFormState extends Equatable {
   final Expense expense;
@@ -45,12 +47,18 @@ class ExpenseFormState extends Equatable {
 
 Expense _emptyExpense() {
   final now = DateTime.now();
+  String currency = 'USD';
+  try {
+    if (getIt.isRegistered<LocalStorageService>()) {
+      currency = getIt<LocalStorageService>().currency;
+    }
+  } catch (_) {}
   return Expense(
     id: '',
     userId: '',
     vendor: '',
     amount: 0.0,
-    currency: 'USD',
+    currency: currency,
     date: now,
     syncStatus: 'pending',
     createdAt: now,

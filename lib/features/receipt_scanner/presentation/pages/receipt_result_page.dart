@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:billlens/core/di/injection.dart';
+import 'package:billlens/core/local/local_storage_service.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
+import 'package:billlens/core/utils/app_utils.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
 import '../../../expenses/domain/entities/expense.dart';
 import '../../../expenses/presentation/bloc/expense_form_bloc.dart';
@@ -14,6 +16,10 @@ import '../../../dashboard/presentation/bloc/dashboard_bloc.dart';
 import '../../../dashboard/presentation/bloc/dashboard_event.dart';
 import '../../../analytics/presentation/bloc/analytics_bloc.dart';
 import '../../../analytics/presentation/bloc/analytics_event.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../auth/data/repositories/user_repository.dart';
 import '../bloc/receipt_processing_state.dart';
 
 class ReceiptResultPage extends StatelessWidget {
@@ -54,6 +60,69 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
       parent: _cardController,
       curve: Curves.easeOutCubic,
     );
+    // Auto-set currency after frame is ready so context is valid
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoCurrencySet());
+  }
+
+  /// If the scanned bill has a detected currency different from the stored one,
+  /// silently update local storage and backend and show a small toast.
+  Future<void> _autoCurrencySet() async {
+    final detectedCurrency = _getProp('currency') as String?;
+    if (detectedCurrency == null || detectedCurrency.isEmpty) return;
+
+    final storage = getIt<LocalStorageService>();
+    final currentCurrency = storage.currency;
+    // Nothing to do if already the same
+    if (detectedCurrency.toUpperCase() == currentCurrency.toUpperCase()) return;
+
+    try {
+      // 1. Update local pref
+      await storage.setCurrency(detectedCurrency.toUpperCase());
+
+      // 2. Sync to backend if logged in
+      if (!mounted) return;
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated) {
+        final repo = getIt<UserRepository>();
+        await repo.updateProfile(
+          userId: authState.user.id,
+          currency: detectedCurrency.toUpperCase(),
+        );
+        if (mounted) {
+          context.read<AuthBloc>().add(CheckAuthStatus());
+        }
+      }
+
+      // 3. Show subtle toast
+      if (!mounted) return;
+      final symbol = AppUtils.getCurrencySymbol(detectedCurrency.toUpperCase());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.currency_exchange_rounded,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Currency auto-set to $symbol ${detectedCurrency.toUpperCase()}',
+                  style: GoogleFonts.outfit(
+                      color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ),
+      );
+    } catch (_) {
+      // Auto-set is best-effort; never block the user
+    }
   }
 
   @override
@@ -70,6 +139,11 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
   String get categoryType => _getProp('categoryType') ?? 'business';
   String get explanation => _getProp('explanation') ?? '';
   double get confidence => (_getProp('confidence') as num?)?.toDouble() ?? 0.5;
+
+  bool get isDuplicate => _getProp('isDuplicate') as bool? ?? false;
+  String? get duplicateReason => _getProp('duplicateReason') as String?;
+  String get documentType => _getProp('documentType') ?? 'receipt';
+  String? get receiptNumber => _getProp('receiptNumber') as String?;
 
   Color get _confidenceColor {
     if (confidence >= 0.8) return const Color(0xFF15803D);
@@ -88,7 +162,16 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
     return _normalisePaymentMethod(raw);
   }
 
-  String get currency => (_getProp('currency') as String?) ?? 'USD';
+  String get currency {
+    final detected = _getProp('currency') as String?;
+    if (detected != null && detected.isNotEmpty) return detected;
+    try {
+      if (getIt.isRegistered<LocalStorageService>()) {
+        return getIt<LocalStorageService>().currency;
+      }
+    } catch (_) {}
+    return 'USD';
+  }
 
   dynamic _getProp(String key) {
     final r = widget.processingResult;
@@ -114,6 +197,14 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
           return r.paymentMethod;
         case 'currency':
           return r.currency;
+        case 'isDuplicate':
+          return r.isDuplicate;
+        case 'duplicateReason':
+          return r.duplicateReason;
+        case 'documentType':
+          return r.documentType;
+        case 'receiptNumber':
+          return r.receiptNumber;
         default:
           return null;
       }
@@ -158,17 +249,24 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
     return 'Other';
   }
 
-  List<MapEntry<String, String>> get _fields => [
-        MapEntry('Vendor', vendor),
-        MapEntry('Amount', '$currency ${amount.toStringAsFixed(2)}'),
-        MapEntry(
-            'Date',
-            DateFormat('dd MMM yyyy')
-                .format(DateTime.tryParse(date) ?? DateTime.now())),
-        MapEntry('Category', category),
-        MapEntry('Payment', paymentMethod ?? 'N/A'),
-        MapEntry('Type', categoryType == 'business' ? 'Business' : 'Personal'),
-      ];
+  List<MapEntry<String, String>> get _fields {
+    final list = [
+      MapEntry('Vendor', vendor),
+      MapEntry('Amount', AppUtils.formatCurrency(amount, currency: currency)),
+      MapEntry(
+          'Date',
+          DateFormat('dd MMM yyyy')
+              .format(DateTime.tryParse(date) ?? DateTime.now())),
+      MapEntry('Category', category),
+      MapEntry('Payment', paymentMethod ?? 'N/A'),
+      MapEntry('Type', categoryType == 'business' ? 'Business' : 'Personal'),
+      MapEntry('Doc Type', documentType.toUpperCase()),
+    ];
+    if (receiptNumber != null && receiptNumber!.isNotEmpty) {
+      list.add(MapEntry('Receipt No', receiptNumber!));
+    }
+    return list;
+  }
 
   void _saveExpense() {
     if (_isSaving) return;
@@ -309,7 +407,7 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '$currency ${amount.toStringAsFixed(2)}',
+                                AppUtils.formatCurrency(amount, currency: currency),
                                 style: GoogleFonts.outfit(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
@@ -351,6 +449,49 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
                       ],
                     ),
                   ),
+                  if (isDuplicate) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF59E0B)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.warning_amber_rounded,
+                              color: Color(0xFFD97706), size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Possible Duplicate',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF92400E),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  duplicateReason ??
+                                      'You already have an expense similar to this one.',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    color: const Color(0xFFB45309),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   Text(
                     'Extracted details',

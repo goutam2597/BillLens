@@ -568,11 +568,6 @@ class _FailurePanel extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: onClose,
-          child: const Text('Close'),
-        ),
       ],
     );
   }

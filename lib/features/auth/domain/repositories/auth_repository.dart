@@ -16,6 +16,10 @@ abstract class AuthRepository {
     required String currency,
   });
 
+  Future<Either<Failure, UserEntity>> googleLogin({
+    required String idToken,
+  });
+
   Future<Either<Failure, void>> logout();
 
   Future<Either<Failure, UserEntity?>> getCurrentUser();

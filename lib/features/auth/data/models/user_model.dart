@@ -21,6 +21,7 @@ class UserModel extends UserEntity {
     super.subscriptionExpiry,
     required super.createdAt,
     required super.updatedAt,
+    super.hasPassword = true,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +51,7 @@ class UserModel extends UserEntity {
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at']) ?? DateTime.now()
           : DateTime.now(),
+      hasPassword: json['has_password'] == true || json['has_password'] == 1,
     );
   }
 
@@ -74,6 +76,7 @@ class UserModel extends UserEntity {
       'subscription_expiry': subscriptionExpiry?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'has_password': hasPassword,
     };
   }
 
@@ -98,6 +101,7 @@ class UserModel extends UserEntity {
       subscriptionExpiry: entity.subscriptionExpiry,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+      hasPassword: entity.hasPassword,
     );
   }
 }

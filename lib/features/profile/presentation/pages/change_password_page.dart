@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/widgets/app_widgets.dart';
@@ -6,6 +7,8 @@ import '../../../../core/router/context_ext.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/di/injection.dart';
 import '../../../auth/data/repositories/user_repository.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -77,11 +80,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final authState = context.watch<AuthBloc>().state;
+    final user = authState is Authenticated ? authState.user : null;
+    final hasPassword = user?.hasPassword ?? true;
 
     return Scaffold(
       backgroundColor: colorScheme.surfaceContainerLowest,
       appBar: AppPageBar(
-        title: 'Change Password',
+        title: hasPassword ? 'Change Password' : 'Set New Password',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.safePop(AppRoutes.profile),
@@ -128,18 +134,20 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               AppGroupedSurface(
                 child: Column(
                   children: [
-                    _buildPasswordField(
-                      label: 'Current password',
-                      controller: _currentCtrl,
-                      obscure: _obscureCurrent,
-                      onToggle: () => setState(
-                        () => _obscureCurrent = !_obscureCurrent,
+                    if (hasPassword) ...[
+                      _buildPasswordField(
+                        label: 'Current password',
+                        controller: _currentCtrl,
+                        obscure: _obscureCurrent,
+                        onToggle: () => setState(
+                          () => _obscureCurrent = !_obscureCurrent,
+                        ),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Enter current password'
+                            : null,
                       ),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Enter current password'
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
+                      const Divider(height: 1),
+                    ],
                     _buildPasswordField(
                       label: 'New password',
                       controller: _newCtrl,
@@ -177,7 +185,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               ),
               const SizedBox(height: 32),
               PrimaryButton(
-                text: 'Update password',
+                text: hasPassword ? 'Update password' : 'Set Password',
                 onPressed: _isSaving ? null : _changePassword,
                 isLoading: _isSaving,
               ),

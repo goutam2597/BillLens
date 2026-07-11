@@ -77,6 +77,10 @@ class ProcessingSuccess extends ReceiptProcessingState {
   final String? paymentMethod;
   final double taxAmount;
   final String receiptUrl;
+  final bool isDuplicate;
+  final String? duplicateReason;
+  final String documentType;
+  final String? receiptNumber;
 
   const ProcessingSuccess({
     required this.vendor,
@@ -91,12 +95,17 @@ class ProcessingSuccess extends ReceiptProcessingState {
     this.paymentMethod,
     this.taxAmount = 0,
     required this.receiptUrl,
+    this.isDuplicate = false,
+    this.duplicateReason,
+    this.documentType = 'receipt',
+    this.receiptNumber,
   });
 
   @override
   List<Object?> get props => [
         vendor, amount, date, currency, category, categoryType,
         confidence, explanation, items, paymentMethod, taxAmount, receiptUrl,
+        isDuplicate, duplicateReason, documentType, receiptNumber,
       ];
 }
 

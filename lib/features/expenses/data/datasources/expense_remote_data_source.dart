@@ -33,7 +33,7 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
       throw ServerException(response.data['message'] ?? 'Failed to load expenses');
     } on DioException catch (e) {
       throw ServerException(
-        e.response?.data['message'] ?? e.message ?? 'Server error',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
       );
     }
   }
@@ -50,7 +50,7 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
       throw ServerException(
-        e.response?.data['message'] ?? e.message ?? 'Server error',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
       );
     }
   }
@@ -66,7 +66,7 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
       throw ServerException(response.data['message'] ?? 'Failed to create expense');
     } on DioException catch (e) {
       throw ServerException(
-        e.response?.data['message'] ?? e.message ?? 'Server error',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
       );
     }
   }
@@ -82,7 +82,7 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
       throw ServerException(response.data['message'] ?? 'Failed to update expense');
     } on DioException catch (e) {
       throw ServerException(
-        e.response?.data['message'] ?? e.message ?? 'Server error',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
       );
     }
   }
@@ -93,7 +93,7 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
       await dio.delete('/api/expenses/$id');
     } on DioException catch (e) {
       throw ServerException(
-        e.response?.data['message'] ?? e.message ?? 'Server error',
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
       );
     }
   }

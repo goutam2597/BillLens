@@ -39,3 +39,12 @@ class RegisterEvent extends AuthEvent {
 }
 
 class LogoutEvent extends AuthEvent {}
+
+class GoogleLoginEvent extends AuthEvent {
+  final String idToken;
+
+  const GoogleLoginEvent({required this.idToken});
+
+  @override
+  List<Object> get props => [idToken];
+}

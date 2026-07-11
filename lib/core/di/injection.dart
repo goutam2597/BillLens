@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../local/local_storage_service.dart';
+import '../firebase/firebase_config_service.dart';
 
 // Auth
 import '../../features/auth/domain/repositories/auth_repository.dart';
@@ -12,6 +13,7 @@ import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/otp_bloc.dart';
 import '../../features/auth/data/repositories/user_repository.dart';
+import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../network/connectivity_service.dart';
 
 // Expenses
@@ -91,6 +93,13 @@ Future<void> configureDependencies() async {
     );
   }
 
+  // Firebase Config
+  if (!getIt.isRegistered<FirebaseConfigService>()) {
+    getIt.registerLazySingleton<FirebaseConfigService>(
+      () => FirebaseConfigService(),
+    );
+  }
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   if (!getIt.isRegistered<AuthBloc>()) {
     getIt.registerFactory<AuthBloc>(
@@ -112,7 +121,10 @@ Future<void> configureDependencies() async {
   // ── User Repository ───────────────────────────────────────────────────────
   if (!getIt.isRegistered<UserRepository>()) {
     getIt.registerLazySingleton<UserRepository>(
-      () => UserRepositoryImpl(dio: getIt(instanceName: 'dio')),
+      () => UserRepositoryImpl(
+        dio: getIt(instanceName: 'dio'),
+        localDataSource: getIt<AuthLocalDataSource>(),
+      ),
     );
   }
 

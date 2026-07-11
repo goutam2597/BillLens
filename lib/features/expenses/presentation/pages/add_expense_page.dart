@@ -14,6 +14,7 @@ import 'package:billlens/features/dashboard/presentation/bloc/dashboard_bloc.dar
 import 'package:billlens/features/dashboard/presentation/bloc/dashboard_event.dart';
 import 'package:billlens/features/analytics/presentation/bloc/analytics_bloc.dart';
 import 'package:billlens/features/analytics/presentation/bloc/analytics_event.dart';
+import 'package:billlens/core/local/local_storage_service.dart';
 
 // ---------------------------------------------------------------------------
 // Category model
@@ -255,7 +256,14 @@ class _AddExpenseFormState extends State<_AddExpenseForm> {
           userId: '',
           vendor: '',
           amount: 0.0,
-          currency: 'USD',
+          currency: (() {
+            try {
+              if (getIt.isRegistered<LocalStorageService>()) {
+                return getIt<LocalStorageService>().currency;
+              }
+            } catch (_) {}
+            return 'USD';
+          })(),
           date: now,
           syncStatus: 'pending',
           createdAt: now,

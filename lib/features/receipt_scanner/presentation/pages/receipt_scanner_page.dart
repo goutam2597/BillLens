@@ -124,7 +124,11 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
       _flashOn = false;
     }
 
-    await controller.dispose();
+    try {
+      await controller.dispose();
+    } catch (_) {
+      // Ignore dispose errors during initialization
+    }
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/theme/app_colors.dart';
+import 'package:billlens/core/utils/app_utils.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
 import '../../domain/entities/expense.dart';
 import '../bloc/expense_bloc.dart';
@@ -91,16 +92,24 @@ class _ExpenseListViewState extends State<_ExpenseListView> {
                 parent: BouncingScrollPhysics(),
               ),
               slivers: [
-                const AppRootSliverBar(title: 'Expenses'),
+                AppRootSliverBar(
+                  title: 'Expenses',
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(56),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: _SearchBar(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                      ),
+                    ),
+                  ),
+                ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   sliver: SliverToBoxAdapter(
                     child: Column(
                       children: [
-                        _SearchBar(
-                          controller: _searchController,
-                          onChanged: _onSearchChanged,
-                        ),
                         const SizedBox(height: 12),
                         AppGroupedSurface(
                           child: Column(
@@ -112,7 +121,7 @@ class _ExpenseListViewState extends State<_ExpenseListView> {
                               ),
                               const SizedBox(height: 16),
                               _TotalSummary(
-                                total: '\$${total.toStringAsFixed(2)}',
+                                total: AppUtils.formatCurrency(total),
                                 count: filtered.length,
                               ),
                             ],
@@ -123,7 +132,7 @@ class _ExpenseListViewState extends State<_ExpenseListView> {
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
                   sliver: _buildBody(state: state, filtered: filtered),
                 ),
               ],
@@ -435,7 +444,8 @@ class _ExpenseLedgerRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${expense.amount.toStringAsFixed(2)}',
+                  AppUtils.formatCurrency(expense.amount,
+                      currency: expense.currency),
                   style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -469,65 +479,62 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: const BoxDecoration(
-                color: Color(0x1A2563EB),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.receipt_long_rounded,
-                size: 48,
-                color: AppColors.primary,
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: const BoxDecoration(
+              color: Color(0x1A2563EB),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 20),
-            Text(
-              'No Expenses Found',
-              style: GoogleFonts.outfit(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
-              ),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              size: 48,
+              color: AppColors.primary,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Start adding your expenses to track your spending.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: colorScheme.onSurfaceVariant,
-              ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'No Expenses Found',
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => context.push(AppRoutes.addExpense),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(
-                'Add Expense',
-                style: GoogleFonts.outfit(
-                    fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Start adding your expenses to track your spending.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: colorScheme.onSurfaceVariant,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => context.push(AppRoutes.addExpense),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(
+              'Add Expense',
+              style:
+                  GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+          ),
+        ],
       ),
     );
   }

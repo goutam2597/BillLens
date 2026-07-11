@@ -19,6 +19,7 @@ class UserEntity {
   final DateTime? subscriptionExpiry;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool hasPassword;
 
   const UserEntity({
     required this.id,
@@ -40,6 +41,7 @@ class UserEntity {
     this.subscriptionExpiry,
     required this.createdAt,
     required this.updatedAt,
+    this.hasPassword = true,
   });
 
   bool get isPremium => subscriptionStatus == 'premium';
@@ -79,6 +81,7 @@ class UserEntity {
     DateTime? subscriptionExpiry,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? hasPassword,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -100,6 +103,7 @@ class UserEntity {
       subscriptionExpiry: subscriptionExpiry ?? this.subscriptionExpiry,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      hasPassword: hasPassword ?? this.hasPassword,
     );
   }
 

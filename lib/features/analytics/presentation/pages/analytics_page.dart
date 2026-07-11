@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/theme/app_colors.dart';
+import 'package:billlens/core/utils/app_utils.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
 import '../bloc/analytics_bloc.dart';
 import '../bloc/analytics_event.dart';
@@ -101,16 +102,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         );
   }
 
-  String _money(String currency, double amount, {int decimals = 0}) {
-    const symbols = {
-      'USD': '\$',
-      'EUR': '€',
-      'GBP': '£',
-      'INR': '₹',
-      'BDT': '৳'
-    };
-    final prefix = symbols[currency.toUpperCase()] ?? '$currency ';
-    return '$prefix${amount.toStringAsFixed(decimals)}';
+  String _money(double amount, {int decimals = 0}) {
+    return AppUtils.formatCurrency(amount, decimals: decimals);
   }
 
   Color _colorFromHex(String value) {
@@ -165,7 +158,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 ],
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 140),
                 sliver: SliverList.list(
                   children: [
                     // ── Date range chips ──────────────────────────────────────────
@@ -221,20 +214,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         children: [
                           _SummaryCard(
                             label: 'Total Spent',
-                            value: _money(
-                              data?.currency ?? 'USD',
-                              data?.totalSpending ?? 0,
-                            ),
+                            value: _money(data?.totalSpending ?? 0),
                             icon: Icons.account_balance_wallet_outlined,
                             color: Color(0xFF2563EB),
                           ),
                           const SizedBox(width: 12),
                           _SummaryCard(
                             label: 'Avg / Day',
-                            value: _money(
-                              data?.currency ?? 'USD',
-                              data?.avgDaily ?? 0,
-                            ),
+                            value: _money(data?.avgDaily ?? 0),
                             icon: Icons.trending_up_rounded,
                             color: Color(0xFF10B981),
                           ),
@@ -307,8 +294,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                                     getTooltipItem:
                                         (group, groupIndex, rod, rodIndex) {
                                       return BarTooltipItem(
-                                        _money(
-                                            data?.currency ?? 'USD', rod.toY),
+                                        _money(rod.toY),
                                         GoogleFonts.outfit(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w700,
@@ -699,7 +685,7 @@ class _CategoryBar extends StatelessWidget {
         SizedBox(
           width: 48,
           child: Text(
-            '\$${stat.amount.toInt()}',
+            AppUtils.formatCurrency(stat.amount, decimals: 0),
             style: GoogleFonts.outfit(
               fontSize: 12,
               fontWeight: FontWeight.w700,

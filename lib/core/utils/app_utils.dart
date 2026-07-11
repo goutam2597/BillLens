@@ -1,11 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:billlens/core/di/injection.dart';
+import 'package:billlens/core/local/local_storage_service.dart';
 
 class AppUtils {
   /// Format currency amount
-  static String formatCurrency(double amount, {String symbol = '\$'}) {
-    final formatter = NumberFormat('#,##0.00');
+  static String formatCurrency(double amount, {String? currency, int decimals = 2}) {
+    String currencyCode = currency ?? '';
+    if (currencyCode.isEmpty) {
+      try {
+        if (getIt.isRegistered<LocalStorageService>()) {
+          currencyCode = getIt<LocalStorageService>().currency;
+        }
+      } catch (_) {}
+      if (currencyCode.isEmpty) currencyCode = 'USD';
+    }
+
+    final symbol = getCurrencySymbol(currencyCode);
+    final pattern = decimals > 0
+        ? '#,##0.${List.filled(decimals, '0').join()}'
+        : '#,##0';
+    final formatter = NumberFormat(pattern);
     return '$symbol${formatter.format(amount)}';
+  }
+
+  /// Get Currency Symbol from Code
+  static String getCurrencySymbol(String currencyCode) {
+    switch (currencyCode.toUpperCase()) {
+      case 'USD': return '\$';
+      case 'EUR': return '€';
+      case 'GBP': return '£';
+      case 'JPY': return '¥';
+      case 'INR': return '₹';
+      case 'AUD': return 'A\$';
+      case 'CAD': return 'C\$';
+      case 'CHF': return 'Fr';
+      case 'CNY': return '¥';
+      case 'BRL': return 'R\$';
+      case 'RUB': return '₽';
+      case 'KRW': return '₩';
+      case 'SGD': return 'S\$';
+      case 'NZD': return 'NZ\$';
+      case 'MXN': return 'MX\$';
+      case 'HKD': return 'HK\$';
+      case 'TRY': return '₺';
+      case 'ZAR': return 'R';
+      case 'SEK': return 'kr';
+      case 'NOK': return 'kr';
+      case 'DKK': return 'kr';
+      case 'IDR': return 'Rp';
+      case 'MYR': return 'RM';
+      case 'PHP': return '₱';
+      case 'THB': return '฿';
+      case 'VND': return '₫';
+      case 'BDT': return '৳';
+      case 'AED': return 'د.إ';
+      case 'SAR': return '﷼';
+      case 'EGP': return 'E£';
+      case 'PKR': return '₨';
+      case 'LKR': return '₨';
+      case 'NPR': return '₨';
+      case 'MMK': return 'K';
+      case 'KZT': return '₸';
+      case 'UAH': return '₴';
+      case 'PLN': return 'zł';
+      case 'CZK': return 'Kč';
+      case 'HUF': return 'Ft';
+      case 'RON': return 'lei';
+      case 'BGN': return 'лв';
+      case 'HRK': return 'kn';
+      case 'ISK': return 'kr';
+      case 'GEL': return '₾';
+      case 'AMD': return '֏';
+      case 'AZN': return '₼';
+      case 'NGN': return '₦';
+      case 'GHS': return '₵';
+      case 'KES': return 'KSh';
+      case 'TZS': return 'TSh';
+      case 'MAD': return 'د.م.';
+      case 'TND': return 'د.ت';
+      case 'DZD': return 'دج';
+      case 'LYD': return 'ل.د';
+      case 'QAR': return 'ر.ق';
+      case 'KWD': return 'د.ك';
+      case 'BHD': return 'BD';
+      case 'OMR': return 'ر.ع.';
+      case 'JOD': return 'JD';
+      case 'IQD': return 'ع.د';
+      case 'IRR': return '﷼';
+      case 'ILS': return '₪';
+      case 'TWD': return 'NT\$';
+      case 'CLP': return 'CLP\$';
+      case 'COP': return 'COL\$';
+      case 'ARS': return 'AR\$';
+      case 'PEN': return 'S/.';
+      case 'BOB': return 'Bs.';
+      case 'PYG': return '₲';
+      case 'UYU': return '\$U';
+      case 'VEF': return 'Bs.F';
+      default: return '$currencyCode ';
+    }
   }
 
   /// Format date for display

@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../datasources/auth_local_data_source.dart';
 import '../models/user_model.dart';
 
 abstract class UserRepository {
@@ -32,8 +33,13 @@ abstract class UserRepository {
 
 class UserRepositoryImpl implements UserRepository {
   final Dio _dio;
+  final AuthLocalDataSource _localDataSource;
 
-  UserRepositoryImpl({@Named('dio') required Dio dio}) : _dio = dio;
+  UserRepositoryImpl({
+    @Named('dio') required Dio dio,
+    required AuthLocalDataSource localDataSource,
+  })  : _dio = dio,
+        _localDataSource = localDataSource;
 
   @override
   Future<Either<Failure, UserModel>> updateProfile({
@@ -65,12 +71,15 @@ class UserRepositoryImpl implements UserRepository {
       final response = await _dio.put('/api/profile', data: data);
       if (response.statusCode == 200) {
         final json = response.data['data'] as Map<String, dynamic>;
-        return Right(UserModel.fromJson(json));
+        final updatedUser = UserModel.fromJson(json);
+        // Persist the updated user so CheckAuthStatus returns fresh data
+        await _localDataSource.cacheUser(updatedUser);
+        return Right(updatedUser);
       }
       throw ServerException(response.data['message'] ?? 'Update failed');
     } on DioException catch (e) {
-      return Left(ServerFailure(
-          e.response?.data['message'] ?? e.message ?? 'Server error'));
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      return Left(ServerFailure(msg ?? e.message ?? 'Server error'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -93,8 +102,8 @@ class UserRepositoryImpl implements UserRepository {
       }
       throw ServerException(response.data['message'] ?? 'Upload failed');
     } on DioException catch (e) {
-      return Left(ServerFailure(
-          e.response?.data['message'] ?? e.message ?? 'Server error'));
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      return Left(ServerFailure(msg ?? e.message ?? 'Server error'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -115,8 +124,8 @@ class UserRepositoryImpl implements UserRepository {
       }
       throw ServerException(response.data['message'] ?? 'Change failed');
     } on DioException catch (e) {
-      return Left(ServerFailure(
-          e.response?.data['message'] ?? e.message ?? 'Server error'));
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      return Left(ServerFailure(msg ?? e.message ?? 'Server error'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

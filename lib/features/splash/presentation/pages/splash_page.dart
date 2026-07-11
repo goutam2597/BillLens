@@ -51,7 +51,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
     if (state is Authenticated) {
       context.go(AppRoutes.dashboard);
     } else if (state is Unauthenticated || state is AuthError) {
-      context.go(AppRoutes.welcome);
+      context.go(AppRoutes.login);
     }
   }
 

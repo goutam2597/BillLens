@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.billlens.billlens"
+    namespace = "com.billlens.net"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.billlens.billlens"
+        applicationId = "com.billlens.net"
         // minSdk 21 required for core library desugaring
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion

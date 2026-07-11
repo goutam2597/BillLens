@@ -1,4 +1,4 @@
-package com.billlens.billlens
+package com.billlens.net
 
 import io.flutter.embedding.android.FlutterActivity
 

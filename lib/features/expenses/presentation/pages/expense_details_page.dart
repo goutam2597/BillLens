@@ -8,6 +8,7 @@ import 'package:billlens/core/di/injection.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
 import 'package:billlens/core/theme/app_colors.dart';
+import 'package:billlens/core/utils/app_utils.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
 import 'package:billlens/features/expenses/domain/entities/expense.dart';
 import 'package:billlens/features/expenses/presentation/bloc/expense_details_bloc.dart';
@@ -144,8 +145,9 @@ class _ExpenseDetailsView extends StatelessWidget {
 
     final vendor = expense?.vendor ?? 'Expense';
     final categoryName = expense?.categoryName ?? 'Uncategorized';
-    final amount =
-        expense != null ? '\$${expense!.amount.toStringAsFixed(2)}' : '\$0.00';
+    final amount = expense != null
+        ? AppUtils.formatCurrency(expense!.amount, currency: expense!.currency)
+        : AppUtils.formatCurrency(0.0);
     final date = expense != null ? formatExpenseDate(expense!.date) : '';
 
     return Scaffold(
@@ -418,7 +420,7 @@ class _DetailsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = [
       {'label': 'Vendor', 'value': expense.vendor},
-      {'label': 'Amount', 'value': '\$${expense.amount.toStringAsFixed(2)}'},
+      {'label': 'Amount', 'value': AppUtils.formatCurrency(expense.amount, currency: expense.currency)},
       {'label': 'Date', 'value': formatExpenseDate(expense.date)},
       {'label': 'Category', 'value': expense.categoryName ?? 'Uncategorized'},
       {'label': 'Payment Method', 'value': expense.paymentMethod ?? '—'},
