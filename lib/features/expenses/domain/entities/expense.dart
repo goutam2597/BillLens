@@ -16,6 +16,7 @@ class Expense {
   final String? notes;
   final String? receiptImageLocalPath;
   final String? receiptImageRemoteUrl;
+  final String? receiptNumber;
   final double? aiConfidence;
   final String? aiExplanation;
   final String syncStatus;
@@ -40,6 +41,7 @@ class Expense {
     this.notes,
     this.receiptImageLocalPath,
     this.receiptImageRemoteUrl,
+    this.receiptNumber,
     this.aiConfidence,
     this.aiExplanation,
     required this.syncStatus,
@@ -65,6 +67,7 @@ class Expense {
     String? notes,
     String? receiptImageLocalPath,
     String? receiptImageRemoteUrl,
+    String? receiptNumber,
     double? aiConfidence,
     String? aiExplanation,
     String? syncStatus,
@@ -91,6 +94,7 @@ class Expense {
           receiptImageLocalPath ?? this.receiptImageLocalPath,
       receiptImageRemoteUrl:
           receiptImageRemoteUrl ?? this.receiptImageRemoteUrl,
+      receiptNumber: receiptNumber ?? this.receiptNumber,
       aiConfidence: aiConfidence ?? this.aiConfidence,
       aiExplanation: aiExplanation ?? this.aiExplanation,
       syncStatus: syncStatus ?? this.syncStatus,

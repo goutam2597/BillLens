@@ -32,6 +32,7 @@ class Expenses extends Table {
   TextColumn get notes => text().nullable()();
   TextColumn get receiptImageLocalPath => text().nullable()();
   TextColumn get receiptImageRemoteUrl => text().nullable()();
+  TextColumn get receiptNumber => text().nullable()();
   RealColumn get aiConfidence => real().nullable()();
   TextColumn get aiExplanation => text().nullable()();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();

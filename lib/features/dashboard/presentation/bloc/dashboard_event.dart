@@ -11,3 +11,7 @@ class LoadDashboardData extends DashboardEvent {}
 class LoadRecentExpenses extends DashboardEvent {}
 
 class CheckSyncStatus extends DashboardEvent {}
+
+class DashboardDataChanged extends DashboardEvent {
+  const DashboardDataChanged();
+}

@@ -270,9 +270,10 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
 
   void _saveExpense() {
     if (_isSaving) return;
-    final expense = _buildExpense();
+    setState(() => _isSaving = true);
+    
     final bloc = context.read<ExpenseFormBloc>();
-    bloc.add(ExpenseDraftUpdated(expense));
+    bloc.add(ExpenseDraftUpdated(_buildExpense()));
     bloc.add(const SubmitExpenseForm());
   }
 
@@ -299,6 +300,7 @@ class _ReceiptResultPageState extends State<_ReceiptResultView>
       date: DateTime.tryParse(date) ?? now,
       paymentMethod: paymentMethod,
       receiptImageRemoteUrl: _receiptUrl,
+      receiptNumber: receiptNumber?.trim().isNotEmpty == true ? receiptNumber : null,
       aiConfidence: confidence,
       aiExplanation: explanation,
       syncStatus: 'pending',

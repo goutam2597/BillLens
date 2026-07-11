@@ -65,9 +65,13 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
       }
       throw ServerException(response.data['message'] ?? 'Failed to create expense');
     } on DioException catch (e) {
-      throw ServerException(
-        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
-      );
+      final message = (e.response?.data is Map ? e.response?.data['message'] : null) ??
+          e.message ??
+          'Server error';
+      if (e.response?.statusCode == 409) {
+        throw ServerException('Duplicate expense: $message');
+      }
+      throw ServerException(message);
     }
   }
 

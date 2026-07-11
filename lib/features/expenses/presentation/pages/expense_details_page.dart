@@ -10,9 +10,15 @@ import 'package:billlens/core/router/context_ext.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/utils/app_utils.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
+import 'package:billlens/core/widgets/delete_confirmation_dialog.dart';
 import 'package:billlens/features/expenses/domain/entities/expense.dart';
+import 'package:billlens/features/expenses/presentation/bloc/expense_bloc.dart';
 import 'package:billlens/features/expenses/presentation/bloc/expense_details_bloc.dart';
 import 'package:billlens/features/expenses/presentation/helpers/expense_ui_helper.dart';
+import 'package:billlens/features/dashboard/presentation/bloc/dashboard_bloc.dart';
+import 'package:billlens/features/dashboard/presentation/bloc/dashboard_event.dart';
+import 'package:billlens/features/analytics/presentation/bloc/analytics_bloc.dart';
+import 'package:billlens/features/analytics/presentation/bloc/analytics_event.dart';
 
 // ---------------------------------------------------------------------------
 // Expense Details Page
@@ -30,6 +36,9 @@ class ExpenseDetailsPage extends StatelessWidget {
       child: BlocConsumer<ExpenseDetailsBloc, ExpenseDetailsState>(
         listener: (context, state) {
           if (state is ExpenseDetailsDeleted) {
+            context.read<ExpenseBloc>().add(const LoadExpensesRequested());
+            context.read<DashboardBloc>().add(LoadDashboardData());
+            context.read<AnalyticsBloc>().add(LoadAnalytics());
             context.safePop(AppRoutes.expenseList);
           } else if (state is ExpenseDetailsError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -68,66 +77,24 @@ class _ExpenseDetailsView extends StatelessWidget {
 
   const _ExpenseDetailsView({required this.expense});
 
-  void _confirmDelete(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDeleteConfirmationDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor:
-            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete Expense',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w700,
-            color:
-                isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-          ),
-        ),
-        content: Text(
+      title: 'Delete Expense?',
+      message:
           'Are you sure you want to delete this expense? This action cannot be undone.',
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            color: isDark
-                ? AppColors.textSecondaryDark
-                : AppColors.textSecondaryLight,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? AppColors.textSecondaryDark
-                    : AppColors.textSecondaryLight,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (expense != null) {
-                context
-                    .read<ExpenseDetailsBloc>()
-                    .add(DeleteExpenseDetailsRequested(expense!.id));
-              } else {
-                context.safePop(AppRoutes.expenseList);
-              }
-            },
-            child: Text(
-              'Delete',
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.w600,
-                color: AppColors.error,
-              ),
-            ),
-          ),
-        ],
-      ),
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
     );
+    if (confirmed && context.mounted) {
+      if (expense != null) {
+        context
+            .read<ExpenseDetailsBloc>()
+            .add(DeleteExpenseDetailsRequested(expense!.id));
+      } else {
+        context.safePop(AppRoutes.expenseList);
+      }
+    }
   }
 
   @override
@@ -161,9 +128,10 @@ class _ExpenseDetailsView extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded, size: 22),
-            onPressed: () {},
-            tooltip: 'More options',
+            icon: const Icon(Icons.delete_outline_rounded,
+                size: 22, color: AppColors.error),
+            onPressed: () => _confirmDelete(context),
+            tooltip: 'Delete expense',
           ),
           const SizedBox(width: 4),
         ],
@@ -175,66 +143,88 @@ class _ExpenseDetailsView extends StatelessWidget {
                 style: GoogleFonts.outfit(color: textSecondary, fontSize: 15),
               ),
             )
-          : SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _HeaderCard(
-                    vendor: vendor,
-                    amount: amount,
-                    date: date,
-                    category: categoryName,
+          : Stack(
+              children: [
+                SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _HeaderCard(
+                        vendor: vendor,
+                        amount: amount,
+                        date: date,
+                        category: categoryName,
+                      ),
+                      const SizedBox(height: 24),
+                      const AppSectionHeader(title: 'Receipt'),
+                      const SizedBox(height: 8),
+                      _ReceiptImageCard(
+                        isDark: isDark,
+                        localPath: expense!.receiptImageLocalPath,
+                        remoteUrl: expense!.receiptImageRemoteUrl,
+                      ),
+                      const SizedBox(height: 24),
+                      const AppSectionHeader(title: 'Expense details'),
+                      const SizedBox(height: 8),
+                      _DetailsCard(
+                        expense: expense!,
+                        isDark: isDark,
+                        surfaceColor: surfaceColor,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        borderColor: borderColor,
+                      ),
+                      if (expense!.aiConfidence != null) ...[
+                        const SizedBox(height: 24),
+                        const AppSectionHeader(title: 'AI extraction'),
+                        const SizedBox(height: 8),
+                        _AIConfidenceCard(
+                          confidence: expense!.aiConfidence!,
+                          explanation: expense!.aiExplanation,
+                          isDark: isDark,
+                          surfaceColor: surfaceColor,
+                          textPrimary: textPrimary,
+                          textSecondary: textSecondary,
+                          borderColor: borderColor,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      _SyncChip(syncStatus: expense!.syncStatus),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  const AppSectionHeader(title: 'Receipt'),
-                  const SizedBox(height: 8),
-                  _ReceiptImagePlaceholder(
-                    isDark: isDark,
-                    localPath: expense!.receiptImageLocalPath,
-                  ),
-                  const SizedBox(height: 24),
-                  const AppSectionHeader(title: 'Expense details'),
-                  const SizedBox(height: 8),
-                  _DetailsCard(
-                    expense: expense!,
-                    isDark: isDark,
-                    surfaceColor: surfaceColor,
-                    textPrimary: textPrimary,
-                    textSecondary: textSecondary,
-                    borderColor: borderColor,
-                  ),
-                  if (expense!.aiConfidence != null) ...[
-                    const SizedBox(height: 24),
-                    const AppSectionHeader(title: 'AI extraction'),
-                    const SizedBox(height: 8),
-                    _AIConfidenceCard(
-                      confidence: expense!.aiConfidence!,
-                      explanation: expense!.aiExplanation,
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          bgColor.withValues(alpha: 0.0),
+                          bgColor,
+                        ],
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                    child: _ActionButtons(
                       isDark: isDark,
-                      surfaceColor: surfaceColor,
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
                       borderColor: borderColor,
+                      textPrimary: textPrimary,
+                      onEdit: () => context.push(
+                        '/expenses/${expense!.id}/edit',
+                        extra: expense,
+                      ),
+                      onDelete: () => _confirmDelete(context),
+                      onShare: () {},
                     ),
-                  ],
-                  const SizedBox(height: 16),
-                  _SyncChip(syncStatus: expense!.syncStatus),
-                  const SizedBox(height: 24),
-                  _ActionButtons(
-                    isDark: isDark,
-                    borderColor: borderColor,
-                    textPrimary: textPrimary,
-                    onEdit: () => context.push(
-                      '/expenses/${expense!.id}/edit',
-                      extra: expense,
-                    ),
-                    onDelete: () => _confirmDelete(context),
-                    onShare: () {},
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
     );
   }
@@ -327,71 +317,167 @@ class _HeaderCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Receipt Image Placeholder
+// Receipt Image Card
 // ---------------------------------------------------------------------------
-class _ReceiptImagePlaceholder extends StatelessWidget {
+class _ReceiptImageCard extends StatelessWidget {
   final bool isDark;
   final String? localPath;
+  final String? remoteUrl;
 
-  const _ReceiptImagePlaceholder({required this.isDark, this.localPath});
+  const _ReceiptImageCard({
+    required this.isDark,
+    this.localPath,
+    this.remoteUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = localPath != null && localPath!.isNotEmpty;
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasLocalImage = localPath != null && localPath!.isNotEmpty;
+    final fullRemoteUrl = AppUtils.receiptImageUrl(remoteUrl);
+    final hasRemoteImage = fullRemoteUrl.isNotEmpty;
+    final hasImage = hasLocalImage || hasRemoteImage;
+
     return Container(
       width: double.infinity,
-      height: 200,
+      constraints: const BoxConstraints(maxHeight: 420),
       decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.surfaceVariantDark
-            : AppColors.surfaceVariantLight,
-        borderRadius: BorderRadius.circular(16),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: !hasImage
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.receipt_long_rounded,
+                      size: 28,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No receipt image',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'A receipt photo was not attached to this expense.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              )
+            : GestureDetector(
+                onTap: () => _openFullScreenImage(context, fullRemoteUrl, localPath),
+                child: hasLocalImage
+                    ? Image.file(
+                        File(localPath!),
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                      )
+                    : Image.network(
+                        fullRemoteUrl,
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: AppColors.primary,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Receipt image load error: $error');
+                          debugPrint('Receipt image URL: $fullRemoteUrl');
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.broken_image_outlined,
+                                size: 40,
+                                color: colorScheme.error,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Could not load receipt image',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+      ),
+    );
+  }
+
+  void _openFullScreenImage(BuildContext context, String remoteUrl, String? localPath) {
+    final hasLocalImage = localPath != null && localPath.isNotEmpty;
+    final imageWidget = hasLocalImage
+        ? Image.file(File(localPath))
+        : Image.network(remoteUrl, fit: BoxFit.contain);
+
+    showDialog(
+      context: context,
+      useSafeArea: false,
+      builder: (_) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              boundaryMargin: const EdgeInsets.all(20),
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Center(child: imageWidget),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
         ),
       ),
-      child: hasImage
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.file(
-                File(localPath!),
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: 200,
-              ),
-            )
-          : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.camera_alt_rounded,
-                  size: 48,
-                  color:
-                      isDark ? AppColors.textHintDark : AppColors.textHintLight,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Receipt Photo',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tap to view full image',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: isDark
-                        ? AppColors.textHintDark
-                        : AppColors.textHintLight,
-                  ),
-                ),
-              ],
-            ),
     );
   }
 }
@@ -418,19 +504,60 @@ class _DetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final rows = [
-      {'label': 'Vendor', 'value': expense.vendor},
-      {'label': 'Amount', 'value': AppUtils.formatCurrency(expense.amount, currency: expense.currency)},
-      {'label': 'Date', 'value': formatExpenseDate(expense.date)},
-      {'label': 'Category', 'value': expense.categoryName ?? 'Uncategorized'},
-      {'label': 'Payment Method', 'value': expense.paymentMethod ?? '—'},
-      {'label': 'Client', 'value': expense.clientName ?? '—'},
-      {'label': 'Project', 'value': expense.projectName ?? '—'},
-      {'label': 'Notes', 'value': expense.notes ?? '—'},
+      _DetailItem(
+        label: 'Vendor',
+        value: expense.vendor,
+        icon: Icons.storefront_outlined,
+        iconColor: colorScheme.primary,
+      ),
+      _DetailItem(
+        label: 'Amount',
+        value: AppUtils.formatCurrency(expense.amount, currency: expense.currency),
+        icon: Icons.account_balance_wallet_outlined,
+        iconColor: const Color(0xFF10B981),
+      ),
+      _DetailItem(
+        label: 'Date',
+        value: formatExpenseDate(expense.date),
+        icon: Icons.calendar_today_outlined,
+        iconColor: const Color(0xFFF59E0B),
+      ),
+      _DetailItem(
+        label: 'Category',
+        value: expense.categoryName ?? 'Uncategorized',
+        icon: Icons.label_outline_rounded,
+        iconColor: const Color(0xFF7C3AED),
+      ),
+      _DetailItem(
+        label: 'Payment Method',
+        value: expense.paymentMethod ?? '—',
+        icon: Icons.credit_card_outlined,
+        iconColor: const Color(0xFF2563EB),
+      ),
+      _DetailItem(
+        label: 'Client',
+        value: expense.clientName ?? '—',
+        icon: Icons.person_outline_rounded,
+        iconColor: const Color(0xFFEC4899),
+      ),
+      _DetailItem(
+        label: 'Project',
+        value: expense.projectName ?? '—',
+        icon: Icons.folder_open_outlined,
+        iconColor: const Color(0xFF6366F1),
+      ),
+      _DetailItem(
+        label: 'Notes',
+        value: expense.notes ?? '—',
+        icon: Icons.notes_rounded,
+        iconColor: const Color(0xFF64748B),
+      ),
     ];
 
     return AppGroupedSurface(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.all(8),
       borderColor: borderColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,8 +568,7 @@ class _DetailsCard extends StatelessWidget {
             return Column(
               children: [
                 _DetailRow(
-                  label: row['label']!,
-                  value: row['value']!,
+                  item: row,
                   textPrimary: textPrimary,
                   textSecondary: textSecondary,
                 ),
@@ -456,15 +582,27 @@ class _DetailsCard extends StatelessWidget {
   }
 }
 
-class _DetailRow extends StatelessWidget {
+class _DetailItem {
   final String label;
   final String value;
+  final IconData icon;
+  final Color iconColor;
+
+  const _DetailItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.iconColor,
+  });
+}
+
+class _DetailRow extends StatelessWidget {
+  final _DetailItem item;
   final Color textPrimary;
   final Color textSecondary;
 
   const _DetailRow({
-    required this.label,
-    required this.value,
+    required this.item,
     required this.textPrimary,
     required this.textSecondary,
   });
@@ -472,29 +610,46 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: textSecondary,
-              ),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: item.iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              item.icon,
+              size: 18,
+              color: item.iconColor,
             ),
           ),
+          const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.label,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: textPrimary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -527,7 +682,8 @@ class _AIConfidenceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = confidence / 100;
+    final pct = confidence.clamp(0.0, 1.0);
+    final confidencePercent = (pct * 100).round();
     return AppGroupedSurface(
       borderColor: borderColor,
       child: Column(
@@ -535,29 +691,50 @@ class _AIConfidenceCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome_rounded,
-                  color: AppColors.accent, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'AI Extraction Confidence',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.accent,
+                  size: 18,
                 ),
               ),
-              const Spacer(),
-              Text(
-                '${confidence.toInt()}%',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'AI Extraction Confidence',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$confidencePercent%',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accent,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
@@ -569,17 +746,18 @@ class _AIConfidenceCard extends StatelessWidget {
               minHeight: 8,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             explanation?.isNotEmpty == true
                 ? explanation!
-                : (confidence >= 80
+                : (confidencePercent >= 80
                     ? 'High confidence — all fields extracted successfully.'
                     : 'Low confidence — please verify the extracted fields.'),
             style: GoogleFonts.outfit(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w400,
               color: textSecondary,
+              height: 1.5,
             ),
           ),
         ],

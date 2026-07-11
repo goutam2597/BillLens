@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/di/injection.dart';
+import 'package:go_router/go_router.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/router/context_ext.dart';
 import 'package:billlens/core/theme/app_colors.dart';
@@ -15,6 +16,7 @@ import 'package:billlens/features/dashboard/presentation/bloc/dashboard_event.da
 import 'package:billlens/features/analytics/presentation/bloc/analytics_bloc.dart';
 import 'package:billlens/features/analytics/presentation/bloc/analytics_event.dart';
 import 'package:billlens/core/local/local_storage_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 // ---------------------------------------------------------------------------
 // Category model
@@ -282,8 +284,14 @@ class _AddExpenseFormState extends State<_AddExpenseForm> {
     );
   }
 
+  bool _isSubmittingLocally = false;
+
   void _save() {
+    if (_isSubmittingLocally || widget.isSaving) return;
     if (!_formKey.currentState!.validate()) return;
+    
+    setState(() => _isSubmittingLocally = true);
+    
     final bloc = context.read<ExpenseFormBloc>();
     bloc.add(ExpenseDraftUpdated(_buildExpense()));
     bloc.add(const SubmitExpenseForm());
@@ -766,7 +774,80 @@ class _ReceiptPhotoArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor:
+              isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (bottomSheetContext) => SafeArea(
+            child: Wrap(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                  child: Text(
+                    'Add Receipt',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_rounded,
+                      color: AppColors.primary),
+                  title: Text(
+                    'Take a Photo',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w500,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(bottomSheetContext);
+                    final picker = ImagePicker();
+                    final picked =
+                        await picker.pickImage(source: ImageSource.camera);
+                    if (picked != null && context.mounted) {
+                      context.push(AppRoutes.receiptCrop, extra: picked.path);
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_rounded,
+                      color: AppColors.primary),
+                  title: Text(
+                    'Choose from Gallery',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w500,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(bottomSheetContext);
+                    final picker = ImagePicker();
+                    final picked =
+                        await picker.pickImage(source: ImageSource.gallery);
+                    if (picked != null && context.mounted) {
+                      context.push(AppRoutes.receiptCrop, extra: picked.path);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
       child: CustomPaint(
         painter: _DashedBorderPainter(
           color: isDark ? AppColors.borderDark : AppColors.borderLight,

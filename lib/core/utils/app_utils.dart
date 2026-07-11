@@ -1,9 +1,39 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:billlens/core/di/injection.dart';
 import 'package:billlens/core/local/local_storage_service.dart';
 
 class AppUtils {
+  /// Build a full URL for a receipt image stored on the backend.
+  /// [remoteUrl] is the relative path returned by the server (e.g. receipts/filename.jpg).
+  static String receiptImageUrl(String? remoteUrl) {
+    if (remoteUrl == null || remoteUrl.isEmpty) return '';
+    if (remoteUrl.startsWith('http')) return remoteUrl;
+    try {
+      if (getIt.isRegistered<Dio>(instanceName: 'dio')) {
+        final baseUrl = getIt<Dio>(instanceName: 'dio').options.baseUrl;
+        if (baseUrl.isNotEmpty) {
+          // The Dio base URL points to .../public (or .../public/api/...).
+          // Uploaded receipt images are served from .../public/uploads/.
+          String uploadsBase;
+          final trimmed = baseUrl.endsWith('/')
+              ? baseUrl.substring(0, baseUrl.length - 1)
+              : baseUrl;
+          if (trimmed.endsWith('/public/api')) {
+            uploadsBase = '${trimmed.substring(0, trimmed.length - '/api'.length)}/uploads';
+          } else if (trimmed.endsWith('/public')) {
+            uploadsBase = '$trimmed/uploads';
+          } else {
+            uploadsBase = trimmed;
+          }
+          return '$uploadsBase/$remoteUrl';
+        }
+      }
+    } catch (_) {}
+    return remoteUrl;
+  }
+
   /// Format currency amount
   static String formatCurrency(double amount, {String? currency, int decimals = 2}) {
     String currencyCode = currency ?? '';

@@ -10,6 +10,8 @@ abstract class ExpenseLocalDataSource {
   Future<ExpenseModel?> getExpenseById(String id);
   Future<ExpenseModel?> getExpenseByServerId(String serverId);
   Future<List<ExpenseModel>> searchExpenses(String query);
+  Future<List<ExpenseModel>> getPendingExpenses();
+  Future<ExpenseModel?> findDuplicateExpense(ExpenseModel expense);
   Future<ExpenseModel> createExpense(ExpenseModel expense);
   Future<ExpenseModel> updateExpense(ExpenseModel expense);
   Future<void> deleteExpense(String id);
@@ -41,6 +43,7 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       notes: Value(model.notes),
       receiptImageLocalPath: Value(model.receiptImageLocalPath),
       receiptImageRemoteUrl: Value(model.receiptImageRemoteUrl),
+      receiptNumber: Value(model.receiptNumber),
       aiConfidence: Value(model.aiConfidence),
       aiExplanation: Value(model.aiExplanation),
       syncStatus: Value(model.syncStatus),
@@ -68,6 +71,7 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       notes: data.notes,
       receiptImageLocalPath: data.receiptImageLocalPath,
       receiptImageRemoteUrl: data.receiptImageRemoteUrl,
+      receiptNumber: data.receiptNumber,
       aiConfidence: data.aiConfidence,
       aiExplanation: data.aiExplanation,
       syncStatus: data.syncStatus,
@@ -116,6 +120,35 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       ..orderBy([(t) => OrderingTerm.desc(t.date)]);
     final rows = await dbQuery.get();
     return rows.map(_fromData).toList();
+  }
+
+  @override
+  Future<List<ExpenseModel>> getPendingExpenses() async {
+    final query = _db.select(_db.expenses)
+      ..where((tbl) => tbl.syncStatus.equals('pending'))
+      ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]);
+    final rows = await query.get();
+    return rows.map(_fromData).toList();
+  }
+
+  @override
+  Future<ExpenseModel?> findDuplicateExpense(ExpenseModel expense) async {
+    final normalizedVendor = expense.vendor.trim().toLowerCase();
+    final query = _db.select(_db.expenses)
+      ..where(
+        (tbl) =>
+            tbl.isDeleted.equals(false) &
+            (
+              (expense.receiptNumber != null && expense.receiptNumber!.isNotEmpty)
+                  ? tbl.receiptNumber.equals(expense.receiptNumber!)
+                  : (tbl.vendor.lower().equals(normalizedVendor) &
+                      tbl.amount.equals(expense.amount) &
+                      tbl.date.equals(expense.date))
+            ),
+      )
+      ..limit(1);
+    final rows = await query.get();
+    return rows.isNotEmpty ? _fromData(rows.first) : null;
   }
 
   @override

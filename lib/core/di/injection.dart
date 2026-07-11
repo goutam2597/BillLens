@@ -28,6 +28,7 @@ import '../../features/expenses/domain/usecases/get_expenses_usecase.dart';
 import '../../features/expenses/domain/usecases/search_expenses_usecase.dart';
 import '../../features/expenses/domain/usecases/update_expense_usecase.dart';
 import '../../features/expenses/presentation/bloc/expense_bloc.dart';
+import '../../features/expenses/presentation/bloc/expense_change_notifier.dart';
 import '../../features/expenses/presentation/bloc/expense_details_bloc.dart';
 import '../../features/expenses/presentation/bloc/expense_form_bloc.dart';
 
@@ -195,12 +196,17 @@ Future<void> configureDependencies() async {
       () => DeleteExpenseUseCase(getIt<ExpenseRepository>()),
     );
   }
+  if (!getIt.isRegistered<ExpenseChangeNotifier>()) {
+    getIt.registerLazySingleton(() => ExpenseChangeNotifier());
+  }
+
   if (!getIt.isRegistered<ExpenseBloc>()) {
     getIt.registerFactory(
       () => ExpenseBloc(
         getExpensesUseCase: getIt<GetExpensesUseCase>(),
         searchExpensesUseCase: getIt<SearchExpensesUseCase>(),
         deleteExpenseUseCase: getIt<DeleteExpenseUseCase>(),
+        changeNotifier: getIt<ExpenseChangeNotifier>(),
       ),
     );
   }
@@ -277,6 +283,7 @@ Future<void> configureDependencies() async {
       () => DashboardBloc(
         expenseRepository: getIt<ExpenseRepository>(),
         connectivityService: getIt<ConnectivityService>(),
+        changeNotifier: getIt<ExpenseChangeNotifier>(),
       ),
     );
   }
@@ -296,6 +303,7 @@ Future<void> configureDependencies() async {
         expenseRepository: getIt<ExpenseRepository>(),
         connectivityService: getIt<ConnectivityService>(),
         dio: getIt(instanceName: 'dio'),
+        changeNotifier: getIt<ExpenseChangeNotifier>(),
       ),
     );
   }

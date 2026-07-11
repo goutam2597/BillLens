@@ -651,6 +651,12 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
   late final GeneratedColumn<String> receiptImageRemoteUrl =
       GeneratedColumn<String>('receipt_image_remote_url', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _receiptNumberMeta =
+      const VerificationMeta('receiptNumber');
+  @override
+  late final GeneratedColumn<String> receiptNumber = GeneratedColumn<String>(
+      'receipt_number', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _aiConfidenceMeta =
       const VerificationMeta('aiConfidence');
   @override
@@ -712,6 +718,7 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         notes,
         receiptImageLocalPath,
         receiptImageRemoteUrl,
+        receiptNumber,
         aiConfidence,
         aiExplanation,
         syncStatus,
@@ -818,6 +825,12 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
           receiptImageRemoteUrl.isAcceptableOrUnknown(
               data['receipt_image_remote_url']!, _receiptImageRemoteUrlMeta));
     }
+    if (data.containsKey('receipt_number')) {
+      context.handle(
+          _receiptNumberMeta,
+          receiptNumber.isAcceptableOrUnknown(
+              data['receipt_number']!, _receiptNumberMeta));
+    }
     if (data.containsKey('ai_confidence')) {
       context.handle(
           _aiConfidenceMeta,
@@ -893,6 +906,8 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
       receiptImageRemoteUrl: attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}receipt_image_remote_url']),
+      receiptNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}receipt_number']),
       aiConfidence: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}ai_confidence']),
       aiExplanation: attachedDatabase.typeMapping
@@ -932,6 +947,7 @@ class Expense extends DataClass implements Insertable<Expense> {
   final String? notes;
   final String? receiptImageLocalPath;
   final String? receiptImageRemoteUrl;
+  final String? receiptNumber;
   final double? aiConfidence;
   final String? aiExplanation;
   final String syncStatus;
@@ -956,6 +972,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       this.notes,
       this.receiptImageLocalPath,
       this.receiptImageRemoteUrl,
+      this.receiptNumber,
       this.aiConfidence,
       this.aiExplanation,
       required this.syncStatus,
@@ -1005,6 +1022,9 @@ class Expense extends DataClass implements Insertable<Expense> {
     }
     if (!nullToAbsent || receiptImageRemoteUrl != null) {
       map['receipt_image_remote_url'] = Variable<String>(receiptImageRemoteUrl);
+    }
+    if (!nullToAbsent || receiptNumber != null) {
+      map['receipt_number'] = Variable<String>(receiptNumber);
     }
     if (!nullToAbsent || aiConfidence != null) {
       map['ai_confidence'] = Variable<double>(aiConfidence);
@@ -1064,6 +1084,9 @@ class Expense extends DataClass implements Insertable<Expense> {
       receiptImageRemoteUrl: receiptImageRemoteUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(receiptImageRemoteUrl),
+      receiptNumber: receiptNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptNumber),
       aiConfidence: aiConfidence == null && nullToAbsent
           ? const Value.absent()
           : Value(aiConfidence),
@@ -1104,6 +1127,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           serializer.fromJson<String?>(json['receiptImageLocalPath']),
       receiptImageRemoteUrl:
           serializer.fromJson<String?>(json['receiptImageRemoteUrl']),
+      receiptNumber: serializer.fromJson<String?>(json['receiptNumber']),
       aiConfidence: serializer.fromJson<double?>(json['aiConfidence']),
       aiExplanation: serializer.fromJson<String?>(json['aiExplanation']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
@@ -1135,6 +1159,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           serializer.toJson<String?>(receiptImageLocalPath),
       'receiptImageRemoteUrl':
           serializer.toJson<String?>(receiptImageRemoteUrl),
+      'receiptNumber': serializer.toJson<String?>(receiptNumber),
       'aiConfidence': serializer.toJson<double?>(aiConfidence),
       'aiExplanation': serializer.toJson<String?>(aiExplanation),
       'syncStatus': serializer.toJson<String>(syncStatus),
@@ -1162,6 +1187,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           Value<String?> notes = const Value.absent(),
           Value<String?> receiptImageLocalPath = const Value.absent(),
           Value<String?> receiptImageRemoteUrl = const Value.absent(),
+          Value<String?> receiptNumber = const Value.absent(),
           Value<double?> aiConfidence = const Value.absent(),
           Value<String?> aiExplanation = const Value.absent(),
           String? syncStatus,
@@ -1193,6 +1219,8 @@ class Expense extends DataClass implements Insertable<Expense> {
         receiptImageRemoteUrl: receiptImageRemoteUrl.present
             ? receiptImageRemoteUrl.value
             : this.receiptImageRemoteUrl,
+        receiptNumber:
+            receiptNumber.present ? receiptNumber.value : this.receiptNumber,
         aiConfidence:
             aiConfidence.present ? aiConfidence.value : this.aiConfidence,
         aiExplanation:
@@ -1234,6 +1262,9 @@ class Expense extends DataClass implements Insertable<Expense> {
       receiptImageRemoteUrl: data.receiptImageRemoteUrl.present
           ? data.receiptImageRemoteUrl.value
           : this.receiptImageRemoteUrl,
+      receiptNumber: data.receiptNumber.present
+          ? data.receiptNumber.value
+          : this.receiptNumber,
       aiConfidence: data.aiConfidence.present
           ? data.aiConfidence.value
           : this.aiConfidence,
@@ -1268,6 +1299,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('notes: $notes, ')
           ..write('receiptImageLocalPath: $receiptImageLocalPath, ')
           ..write('receiptImageRemoteUrl: $receiptImageRemoteUrl, ')
+          ..write('receiptNumber: $receiptNumber, ')
           ..write('aiConfidence: $aiConfidence, ')
           ..write('aiExplanation: $aiExplanation, ')
           ..write('syncStatus: $syncStatus, ')
@@ -1297,6 +1329,7 @@ class Expense extends DataClass implements Insertable<Expense> {
         notes,
         receiptImageLocalPath,
         receiptImageRemoteUrl,
+        receiptNumber,
         aiConfidence,
         aiExplanation,
         syncStatus,
@@ -1325,6 +1358,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.notes == this.notes &&
           other.receiptImageLocalPath == this.receiptImageLocalPath &&
           other.receiptImageRemoteUrl == this.receiptImageRemoteUrl &&
+          other.receiptNumber == this.receiptNumber &&
           other.aiConfidence == this.aiConfidence &&
           other.aiExplanation == this.aiExplanation &&
           other.syncStatus == this.syncStatus &&
@@ -1351,6 +1385,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<String?> notes;
   final Value<String?> receiptImageLocalPath;
   final Value<String?> receiptImageRemoteUrl;
+  final Value<String?> receiptNumber;
   final Value<double?> aiConfidence;
   final Value<String?> aiExplanation;
   final Value<String> syncStatus;
@@ -1375,6 +1410,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.notes = const Value.absent(),
     this.receiptImageLocalPath = const Value.absent(),
     this.receiptImageRemoteUrl = const Value.absent(),
+    this.receiptNumber = const Value.absent(),
     this.aiConfidence = const Value.absent(),
     this.aiExplanation = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -1400,6 +1436,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.notes = const Value.absent(),
     this.receiptImageLocalPath = const Value.absent(),
     this.receiptImageRemoteUrl = const Value.absent(),
+    this.receiptNumber = const Value.absent(),
     this.aiConfidence = const Value.absent(),
     this.aiExplanation = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -1427,6 +1464,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<String>? notes,
     Expression<String>? receiptImageLocalPath,
     Expression<String>? receiptImageRemoteUrl,
+    Expression<String>? receiptNumber,
     Expression<double>? aiConfidence,
     Expression<String>? aiExplanation,
     Expression<String>? syncStatus,
@@ -1454,6 +1492,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
         'receipt_image_local_path': receiptImageLocalPath,
       if (receiptImageRemoteUrl != null)
         'receipt_image_remote_url': receiptImageRemoteUrl,
+      if (receiptNumber != null) 'receipt_number': receiptNumber,
       if (aiConfidence != null) 'ai_confidence': aiConfidence,
       if (aiExplanation != null) 'ai_explanation': aiExplanation,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -1481,6 +1520,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       Value<String?>? notes,
       Value<String?>? receiptImageLocalPath,
       Value<String?>? receiptImageRemoteUrl,
+      Value<String?>? receiptNumber,
       Value<double?>? aiConfidence,
       Value<String?>? aiExplanation,
       Value<String>? syncStatus,
@@ -1507,6 +1547,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           receiptImageLocalPath ?? this.receiptImageLocalPath,
       receiptImageRemoteUrl:
           receiptImageRemoteUrl ?? this.receiptImageRemoteUrl,
+      receiptNumber: receiptNumber ?? this.receiptNumber,
       aiConfidence: aiConfidence ?? this.aiConfidence,
       aiExplanation: aiExplanation ?? this.aiExplanation,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -1572,6 +1613,9 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       map['receipt_image_remote_url'] =
           Variable<String>(receiptImageRemoteUrl.value);
     }
+    if (receiptNumber.present) {
+      map['receipt_number'] = Variable<String>(receiptNumber.value);
+    }
     if (aiConfidence.present) {
       map['ai_confidence'] = Variable<double>(aiConfidence.value);
     }
@@ -1613,6 +1657,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('notes: $notes, ')
           ..write('receiptImageLocalPath: $receiptImageLocalPath, ')
           ..write('receiptImageRemoteUrl: $receiptImageRemoteUrl, ')
+          ..write('receiptNumber: $receiptNumber, ')
           ..write('aiConfidence: $aiConfidence, ')
           ..write('aiExplanation: $aiExplanation, ')
           ..write('syncStatus: $syncStatus, ')
@@ -3166,6 +3211,7 @@ typedef $$ExpensesTableCreateCompanionBuilder = ExpensesCompanion Function({
   Value<String?> notes,
   Value<String?> receiptImageLocalPath,
   Value<String?> receiptImageRemoteUrl,
+  Value<String?> receiptNumber,
   Value<double?> aiConfidence,
   Value<String?> aiExplanation,
   Value<String> syncStatus,
@@ -3191,6 +3237,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder = ExpensesCompanion Function({
   Value<String?> notes,
   Value<String?> receiptImageLocalPath,
   Value<String?> receiptImageRemoteUrl,
+  Value<String?> receiptNumber,
   Value<double?> aiConfidence,
   Value<String?> aiExplanation,
   Value<String> syncStatus,
@@ -3260,6 +3307,9 @@ class $$ExpensesTableFilterComposer
   ColumnFilters<String> get receiptImageRemoteUrl => $composableBuilder(
       column: $table.receiptImageRemoteUrl,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get receiptNumber => $composableBuilder(
+      column: $table.receiptNumber, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get aiConfidence => $composableBuilder(
       column: $table.aiConfidence, builder: (column) => ColumnFilters(column));
@@ -3345,6 +3395,10 @@ class $$ExpensesTableOrderingComposer
       column: $table.receiptImageRemoteUrl,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get receiptNumber => $composableBuilder(
+      column: $table.receiptNumber,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get aiConfidence => $composableBuilder(
       column: $table.aiConfidence,
       builder: (column) => ColumnOrderings(column));
@@ -3426,6 +3480,9 @@ class $$ExpensesTableAnnotationComposer
   GeneratedColumn<String> get receiptImageRemoteUrl => $composableBuilder(
       column: $table.receiptImageRemoteUrl, builder: (column) => column);
 
+  GeneratedColumn<String> get receiptNumber => $composableBuilder(
+      column: $table.receiptNumber, builder: (column) => column);
+
   GeneratedColumn<double> get aiConfidence => $composableBuilder(
       column: $table.aiConfidence, builder: (column) => column);
 
@@ -3485,6 +3542,7 @@ class $$ExpensesTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<String?> receiptImageLocalPath = const Value.absent(),
             Value<String?> receiptImageRemoteUrl = const Value.absent(),
+            Value<String?> receiptNumber = const Value.absent(),
             Value<double?> aiConfidence = const Value.absent(),
             Value<String?> aiExplanation = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -3510,6 +3568,7 @@ class $$ExpensesTableTableManager extends RootTableManager<
             notes: notes,
             receiptImageLocalPath: receiptImageLocalPath,
             receiptImageRemoteUrl: receiptImageRemoteUrl,
+            receiptNumber: receiptNumber,
             aiConfidence: aiConfidence,
             aiExplanation: aiExplanation,
             syncStatus: syncStatus,
@@ -3535,6 +3594,7 @@ class $$ExpensesTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<String?> receiptImageLocalPath = const Value.absent(),
             Value<String?> receiptImageRemoteUrl = const Value.absent(),
+            Value<String?> receiptNumber = const Value.absent(),
             Value<double?> aiConfidence = const Value.absent(),
             Value<String?> aiExplanation = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -3560,6 +3620,7 @@ class $$ExpensesTableTableManager extends RootTableManager<
             notes: notes,
             receiptImageLocalPath: receiptImageLocalPath,
             receiptImageRemoteUrl: receiptImageRemoteUrl,
+            receiptNumber: receiptNumber,
             aiConfidence: aiConfidence,
             aiExplanation: aiExplanation,
             syncStatus: syncStatus,

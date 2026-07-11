@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../../expenses/domain/entities/expense.dart';
 import '../../../expenses/domain/repositories/expense_repository.dart';
+import '../../../expenses/presentation/bloc/expense_change_notifier.dart';
 import 'analytics_event.dart';
 import 'analytics_state.dart';
 
@@ -16,7 +17,9 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
   final ExpenseRepository _expenseRepository;
   final ConnectivityService _connectivity;
   final Dio _dio;
+  final ExpenseChangeNotifier _changeNotifier;
   late final StreamSubscription<bool> _connectivitySubscription;
+  late final StreamSubscription<ExpenseChangeEvent> _changesSubscription;
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -24,15 +27,21 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
     required ExpenseRepository expenseRepository,
     required ConnectivityService connectivityService,
     @Named('dio') required Dio dio,
+    required ExpenseChangeNotifier changeNotifier,
   })  : _expenseRepository = expenseRepository,
         _connectivity = connectivityService,
         _dio = dio,
+        _changeNotifier = changeNotifier,
         super(const AnalyticsInitial()) {
     on<LoadAnalytics>(_onLoadAnalytics);
     on<ChangeAnalyticsDateRange>(_onChangeDateRange);
     on<AnalyticsConnectivityChanged>(_onConnectivityChanged);
+    on<AnalyticsDataChanged>(_onDataChanged);
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
       (online) => add(AnalyticsConnectivityChanged(online)),
+    );
+    _changesSubscription = _changeNotifier.stream.listen(
+      (event) => add(const AnalyticsDataChanged()),
     );
   }
 
@@ -251,9 +260,18 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
 
   String _dateParam(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 
+  Future<void> _onDataChanged(
+    AnalyticsDataChanged event,
+    Emitter<AnalyticsState> emit,
+  ) async {
+    // Reload analytics when an expense changes elsewhere.
+    await _onLoadAnalytics(const LoadAnalytics(), emit);
+  }
+
   @override
   Future<void> close() async {
     await _connectivitySubscription.cancel();
+    await _changesSubscription.cancel();
     return super.close();
   }
 }

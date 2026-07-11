@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/utils/app_utils.dart';
@@ -220,76 +221,103 @@ class _DashboardPageState extends State<DashboardPage>
 
     return Container(
       width: double.infinity,
-      height: 196,
-      padding: const EdgeInsets.all(20),
+      height: 190,
       decoration: BoxDecoration(
         gradient: AppColors.cardGradient,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: AppColors.primaryShadow,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Spent this month',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.78),
-                  ),
-                ),
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          Positioned(
+            right: 50,
+            bottom: -40,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Total spent this month',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        monthStr,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  monthStr,
+                const SizedBox(height: 16),
+                Text(
+                  AppUtils.formatCurrency(total),
                   style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 38,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            AppUtils.formatCurrency(total),
-            style: GoogleFonts.outfit(
-              fontSize: 38,
-              height: 1,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+                const Spacer(),
+                Row(
+                  children: [
+                    _SummaryStat(
+                      icon: Icons.receipt_long_rounded,
+                      value: '$count',
+                      label: count == 1 ? 'expense' : 'expenses',
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 24),
+                    _SummaryStat(
+                      icon: Icons.analytics_rounded,
+                      value: AppUtils.formatCurrency(average),
+                      label: 'avg',
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryStat(
-                  icon: Icons.receipt_long_outlined,
-                  value: '$count',
-                  label: count == 1 ? 'expense' : 'expenses',
-                  color: Colors.white,
-                ),
-              ),
-              Expanded(
-                child: _SummaryStat(
-                  icon: Icons.analytics_outlined,
-                  value: AppUtils.formatCurrency(average),
-                  label: 'average',
-                  color: Colors.white,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -308,7 +336,7 @@ class _DashboardPageState extends State<DashboardPage>
           children: [
             Expanded(
               child: _ActionItem(
-                icon: Icons.edit_note_rounded,
+                assetPath: 'assets/icons/manual.svg',
                 label: 'Manual',
                 onTap: () => context.push(AppRoutes.addExpense),
               ),
@@ -316,7 +344,7 @@ class _DashboardPageState extends State<DashboardPage>
             const SizedBox(width: 8),
             Expanded(
               child: _ActionItem(
-                icon: Icons.upload_file_rounded,
+                assetPath: 'assets/icons/upload.svg',
                 label: 'Upload',
                 onTap: () => context.push(AppRoutes.receiptScanner),
               ),
@@ -324,7 +352,7 @@ class _DashboardPageState extends State<DashboardPage>
             const SizedBox(width: 8),
             Expanded(
               child: _ActionItem(
-                icon: Icons.pie_chart_outline_rounded,
+                assetPath: 'assets/icons/reports.svg',
                 label: 'Reports',
                 onTap: () => context.push(AppRoutes.reports),
               ),
@@ -471,12 +499,19 @@ class _SummaryStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 14),
+        ),
+        const SizedBox(width: 8),
         Text(
           '$value $label',
           style: GoogleFonts.outfit(
-              fontSize: 12, fontWeight: FontWeight.w600, color: color),
+              fontSize: 13, fontWeight: FontWeight.w500, color: color),
         ),
       ],
     );
@@ -492,19 +527,21 @@ class _PrimaryActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 54,
+      height: 52,
       child: FilledButton.icon(
         onPressed: onTap,
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          elevation: 2,
+          shadowColor: AppColors.primary.withValues(alpha: 0.5),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        icon: const Icon(Icons.document_scanner_rounded, size: 22),
+        icon: const Icon(Icons.document_scanner_rounded, size: 24),
         label: Text(
-          'Scan receipt',
-          style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w700),
+          'Scan new receipt',
+          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -513,12 +550,12 @@ class _PrimaryActionButton extends StatelessWidget {
 
 // ─── Action Item ─────────────────────────────────────────────────────────────
 class _ActionItem extends StatefulWidget {
-  final IconData icon;
+  final String assetPath;
   final String label;
   final VoidCallback onTap;
 
   const _ActionItem(
-      {required this.icon, required this.label, required this.onTap});
+      {required this.assetPath, required this.label, required this.onTap});
 
   @override
   State<_ActionItem> createState() => _ActionItemState();
@@ -558,7 +595,7 @@ class _ActionItemState extends State<_ActionItem>
         builder: (context, child) =>
             Transform.scale(scale: _scaleAnimation.value, child: child),
         child: Container(
-          height: 46,
+          height: 84,
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark
                 ? AppColors.surfaceDark
@@ -569,18 +606,31 @@ class _ActionItemState extends State<_ActionItem>
                   ? AppColors.borderDark
                   : AppColors.borderLight,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Row(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.icon, color: AppColors.primary, size: 18),
-              const SizedBox(width: 6),
+              SvgPicture.asset(
+                widget.assetPath,
+                width: 24,
+                height: 24,
+                colorFilter:
+                    const ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
+              ),
+              const SizedBox(height: 8),
               Flexible(
                 child: Text(
                   widget.label,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).brightness == Brightness.dark
                         ? AppColors.textPrimaryDark

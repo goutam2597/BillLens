@@ -28,3 +28,20 @@ class DeleteExpenseRequested extends ExpenseEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class ExpenseCreated extends ExpenseEvent {
+  const ExpenseCreated();
+}
+
+class ExpenseUpdated extends ExpenseEvent {
+  const ExpenseUpdated();
+}
+
+class ExpenseDeletedExternally extends ExpenseEvent {
+  final String id;
+
+  const ExpenseDeletedExternally(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}

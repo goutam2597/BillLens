@@ -62,6 +62,8 @@ import '../../features/expenses/domain/usecases/search_expenses_usecase.dart'
     as _i39;
 import '../../features/expenses/domain/usecases/update_expense_usecase.dart'
     as _i721;
+import '../../features/expenses/presentation/bloc/expense_change_notifier.dart'
+    as _i76;
 import '../../features/profile/presentation/bloc/profile_bloc.dart' as _i469;
 import '../../features/receipt_scanner/presentation/bloc/receipt_processing_bloc.dart'
     as _i473;
@@ -73,6 +75,7 @@ import '../../features/subscription/presentation/bloc/subscription_bloc.dart'
     as _i858;
 import '../../features/sync/presentation/bloc/sync_bloc.dart' as _i21;
 import '../database/app_database.dart' as _i982;
+import '../firebase/firebase_config_service.dart' as _i190;
 import '../local/local_storage_service.dart' as _i847;
 import '../network/auth_interceptor.dart' as _i908;
 import '../network/connectivity_service.dart' as _i491;
@@ -99,6 +102,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => localModule.prefs,
       preResolve: true,
     );
+    gh.singleton<_i76.ExpenseChangeNotifier>(
+        () => _i76.ExpenseChangeNotifier());
+    gh.lazySingleton<_i190.FirebaseConfigService>(
+        () => _i190.FirebaseConfigService());
     gh.lazySingleton<_i491.ConnectivityService>(
         () => _i491.ConnectivityService());
     gh.lazySingleton<_i162.CategoryRemoteDataSource>(
@@ -167,19 +174,21 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i721.UpdateExpenseUseCase(gh<_i939.ExpenseRepository>()));
     gh.lazySingleton<_i107.AuthRemoteDataSource>(() =>
         _i107.AuthRemoteDataSourceImpl(gh<_i361.Dio>(instanceName: 'dio')));
-    gh.factory<_i554.ReportsBloc>(() =>
-        _i554.ReportsBloc(expenseRepository: gh<_i939.ExpenseRepository>()));
-    gh.factory<_i21.SyncBloc>(
-        () => _i21.SyncBloc(expenseRepository: gh<_i939.ExpenseRepository>()));
     gh.factory<_i652.DashboardBloc>(() => _i652.DashboardBloc(
           expenseRepository: gh<_i939.ExpenseRepository>(),
           connectivityService: gh<_i491.ConnectivityService>(),
+          changeNotifier: gh<_i76.ExpenseChangeNotifier>(),
         ));
     gh.factory<_i70.AnalyticsBloc>(() => _i70.AnalyticsBloc(
           expenseRepository: gh<_i939.ExpenseRepository>(),
           connectivityService: gh<_i491.ConnectivityService>(),
           dio: gh<_i361.Dio>(instanceName: 'dio'),
+          changeNotifier: gh<_i76.ExpenseChangeNotifier>(),
         ));
+    gh.factory<_i554.ReportsBloc>(() =>
+        _i554.ReportsBloc(expenseRepository: gh<_i939.ExpenseRepository>()));
+    gh.factory<_i21.SyncBloc>(
+        () => _i21.SyncBloc(expenseRepository: gh<_i939.ExpenseRepository>()));
     gh.lazySingleton<_i787.AuthRepository>(() => _i153.AuthRepositoryImpl(
           remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
           localDataSource: gh<_i852.AuthLocalDataSource>(),

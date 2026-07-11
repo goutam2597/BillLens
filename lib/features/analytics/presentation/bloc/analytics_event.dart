@@ -25,3 +25,7 @@ class AnalyticsConnectivityChanged extends AnalyticsEvent {
   @override
   List<Object> get props => [isOnline];
 }
+
+class AnalyticsDataChanged extends AnalyticsEvent {
+  const AnalyticsDataChanged();
+}

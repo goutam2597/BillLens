@@ -34,51 +34,46 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
           // Fetch current local expenses
           final localExpenses = await localDataSource.getExpenses();
-          
-          // Clean up corrupted duplicates
-          final seenLocalIdsToWipe = <String>{};
+
+          final remainingRemote = List<ExpenseModel>.from(remoteExpenses);
+          final pendingLocals =
+              localExpenses.where((l) => l.serverId == null).toList();
+
           for (final local in localExpenses) {
             if (local.serverId != null) {
-              if (!seenLocalIdsToWipe.contains(local.id)) {
+              final remoteIndex = remainingRemote
+                  .indexWhere((r) => r.serverId == local.serverId);
+              if (remoteIndex >= 0) {
+                final remote = remainingRemote.removeAt(remoteIndex);
+                await localDataSource
+                    .updateExpense(remote.copyWithModel(id: local.id));
+              } else {
+                // Deleted on server or no longer accessible
                 await localDataSource.hardDeleteExpense(local.id);
-                seenLocalIdsToWipe.add(local.id);
               }
             } else if (local.syncStatus == 'synced') {
               // Corrupted local item marked as synced but no server ID
               await localDataSource.hardDeleteExpense(local.id);
-              seenLocalIdsToWipe.add(local.id);
             }
           }
 
-          // Reload local expenses after wipe to get remaining pending offline items
-          var remainingLocals = await localDataSource.getExpenses();
+          for (final remote in remainingRemote) {
+            if (remote.serverId == null) continue;
 
-          // Insert fresh remote data
-          for (final model in remoteExpenses) {
-            if (model.serverId == null) continue;
+            final matchIndex = pendingLocals.indexWhere((l) =>
+                l.vendor.trim().toLowerCase() ==
+                    remote.vendor.trim().toLowerCase() &&
+                l.amount == remote.amount &&
+                l.date.year == remote.date.year &&
+                l.date.month == remote.date.month &&
+                l.date.day == remote.date.day);
 
-            // Check if there is an offline item that perfectly matches this remote item
-            final matchingOffline = remainingLocals
-                .where((e) =>
-                    e.serverId == null &&
-                    e.vendor.trim().toLowerCase() ==
-                        model.vendor.trim().toLowerCase() &&
-                    e.amount == model.amount &&
-                    e.date.year == model.date.year &&
-                    e.date.month == model.date.month &&
-                    e.date.day == model.date.day)
-                .toList();
-
-            if (matchingOffline.isNotEmpty) {
-              // Update the offline item with the server data to link them
-              final target = matchingOffline.first;
+            if (matchIndex >= 0) {
+              final local = pendingLocals.removeAt(matchIndex);
               await localDataSource
-                  .updateExpense(model.copyWithModel(id: target.id));
-              // Remove from memory so we don't match it twice
-              remainingLocals.remove(target);
+                  .updateExpense(remote.copyWithModel(id: local.id));
             } else {
-              // Create fresh
-              await localDataSource.createExpense(model);
+              await localDataSource.createExpense(remote);
             }
           }
 
@@ -136,6 +131,13 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   Future<Either<Failure, Expense>> createExpense(Expense expense) async {
     try {
       var model = ExpenseModel.fromEntity(expense);
+
+      final duplicate = await localDataSource.findDuplicateExpense(model);
+      if (duplicate != null) {
+        return const Left(DuplicateFailure(
+            'An expense with this receipt number, vendor, date, and amount already exists.'));
+      }
+
       model = await localDataSource.createExpense(model);
 
       final online = await _connectivity.isOnline;
@@ -144,6 +146,12 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
           final synced = await remoteDataSource.createExpense(model);
           await localDataSource.updateExpense(synced);
           return Right(synced);
+        } on ServerException catch (e) {
+          if (e.message.toLowerCase().contains('duplicate')) {
+            await localDataSource.hardDeleteExpense(model.id);
+            return Left(DuplicateFailure(e.message));
+          }
+          // Will sync later
         } catch (_) {
           // Will sync later
         }
@@ -187,17 +195,20 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   @override
   Future<Either<Failure, void>> deleteExpense(String id) async {
     try {
+      // Get the expense first so we have the serverId
+      final expense = await localDataSource.getExpenseById(id);
+      
+      // Delete locally
       await localDataSource.deleteExpense(id);
 
       final online = await _connectivity.isOnline;
-      if (online) {
+      if (online && expense != null && expense.serverId != null) {
         try {
-          final expense = await localDataSource.getExpenseById(id);
-          if (expense?.serverId != null) {
-            final serverId = int.tryParse(expense!.serverId!);
-            if (serverId != null) {
-              await remoteDataSource.deleteExpense(serverId);
-            }
+          final serverId = int.tryParse(expense.serverId!);
+          if (serverId != null) {
+            await remoteDataSource.deleteExpense(serverId);
+            // Successfully deleted from global db, now hard delete from local db to keep it clean
+            await localDataSource.hardDeleteExpense(id);
           }
         } catch (_) {}
       }
@@ -215,9 +226,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       final online = await _connectivity.isOnline;
       if (!online) return const Right(0);
 
-      final localExpenses = await localDataSource.getExpenses();
-      final pending =
-          localExpenses.where((e) => e.syncStatus == 'pending').toList();
+      final pending = await localDataSource.getPendingExpenses();
 
       int syncedCount = 0;
       for (final expense in pending) {
@@ -225,7 +234,13 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
           if (expense.isDeleted) {
             if (expense.serverId != null) {
               final sId = int.tryParse(expense.serverId!);
-              if (sId != null) await remoteDataSource.deleteExpense(sId);
+              if (sId != null) {
+                await remoteDataSource.deleteExpense(sId);
+                await localDataSource.hardDeleteExpense(expense.id);
+              }
+            } else {
+              // Local-only pending delete; just remove it
+              await localDataSource.hardDeleteExpense(expense.id);
             }
           } else if (expense.serverId != null) {
             final sId = int.tryParse(expense.serverId!);

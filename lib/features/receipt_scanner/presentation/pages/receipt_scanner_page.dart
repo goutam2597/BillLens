@@ -129,6 +129,10 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
     } catch (_) {
       // Ignore dispose errors during initialization
     }
+
+    // Brief delay so the camera subsystem can fully tear down before
+    // a subsequent _initCamera() call reopens the device.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
   }
 
   @override
@@ -166,7 +170,12 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
       await _releaseCamera();
       if (mounted) {
         await context.push(AppRoutes.receiptCrop, extra: file.path);
-        if (mounted) await _initCamera();
+        if (mounted) {
+          // Ensure full teardown before reinitializing to avoid
+          // "ImageReader abandoned" / black preview.
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          if (mounted) await _initCamera();
+        }
       }
     } on CameraException catch (e) {
       if (mounted) {
@@ -186,7 +195,10 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null && mounted) {
       await context.push(AppRoutes.receiptCrop, extra: picked.path);
-      if (mounted) await _initCamera();
+      if (mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (mounted) await _initCamera();
+      }
     } else if (mounted) {
       await _initCamera();
     }
@@ -206,7 +218,12 @@ class _ReceiptScannerPageState extends State<ReceiptScannerPage>
     _scanLineController.dispose();
     final controller = _controller;
     _controller = null;
-    controller?.dispose();
+    // Fire-and-forget: the camera subsystem will clean up. We can't await
+    // here because dispose() is sync, but the null assignment ensures no
+    // further calls hit the old controller.
+    if (controller != null) {
+      controller.dispose().catchError((_) {});
+    }
     super.dispose();
   }
 
