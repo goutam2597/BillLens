@@ -21,6 +21,7 @@ import '../../features/categories/presentation/pages/categories_page.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/subscription/presentation/pages/subscription_page.dart';
+import '../../features/subscription/presentation/pages/checkout_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
@@ -225,6 +226,18 @@ class AppRouter {
         path: AppRoutes.subscription,
         name: 'subscription',
         builder: (context, state) => const SubscriptionPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.subscriptionCheckout,
+        name: 'subscriptionCheckout',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return CheckoutPage(
+            planId: extra?['planId'] as String? ?? 'premium',
+            isYearly: extra?['isYearly'] as bool? ?? false,
+            price: extra?['price'] as double? ?? 9.99,
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.editProfile,

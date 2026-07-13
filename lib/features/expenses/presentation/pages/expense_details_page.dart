@@ -395,7 +395,8 @@ class _ReceiptImageCard extends StatelessWidget {
                 ],
               )
             : GestureDetector(
-                onTap: () => _openFullScreenImage(context, fullRemoteUrl, localPath),
+                onTap: () =>
+                    _openFullScreenImage(context, fullRemoteUrl, localPath),
                 child: hasLocalImage
                     ? Image.file(
                         File(localPath!),
@@ -446,7 +447,8 @@ class _ReceiptImageCard extends StatelessWidget {
     );
   }
 
-  void _openFullScreenImage(BuildContext context, String remoteUrl, String? localPath) {
+  void _openFullScreenImage(
+      BuildContext context, String remoteUrl, String? localPath) {
     final hasLocalImage = localPath != null && localPath.isNotEmpty;
     final imageWidget = hasLocalImage
         ? Image.file(File(localPath))
@@ -514,7 +516,8 @@ class _DetailsCard extends StatelessWidget {
       ),
       _DetailItem(
         label: 'Amount',
-        value: AppUtils.formatCurrency(expense.amount, currency: expense.currency),
+        value:
+            AppUtils.formatCurrency(expense.amount, currency: expense.currency),
         icon: Icons.account_balance_wallet_outlined,
         iconColor: const Color(0xFF10B981),
       ),

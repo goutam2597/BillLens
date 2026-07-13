@@ -32,6 +32,7 @@ class AppRoutes {
 
   // Subscription
   static const String subscription = '/subscription';
+  static const String subscriptionCheckout = '/subscription/checkout';
 
   // Profile & Settings
   static const String profile = '/profile';

@@ -39,7 +39,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.logout_rounded, color: AppColors.primary, size: 32),
+                child: const Icon(Icons.logout_rounded,
+                    color: AppColors.primary, size: 32),
               ),
               const SizedBox(height: 20),
               Text(
@@ -67,8 +68,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       onPressed: () => Navigator.of(ctx).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(color: Theme.of(ctx).colorScheme.outlineVariant),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(
+                            color: Theme.of(ctx).colorScheme.outlineVariant),
                       ),
                       child: Text(
                         'Cancel',
@@ -91,7 +94,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
                         'Log Out',
@@ -126,7 +130,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   color: AppColors.error.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 32),
+                child: const Icon(Icons.delete_outline_rounded,
+                    color: AppColors.error, size: 32),
               ),
               const SizedBox(height: 20),
               Text(
@@ -154,8 +159,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       onPressed: () => Navigator.of(ctx).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(color: Theme.of(ctx).colorScheme.outlineVariant),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(
+                            color: Theme.of(ctx).colorScheme.outlineVariant),
                       ),
                       child: Text(
                         'Cancel',
@@ -175,7 +182,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundColor: AppColors.error,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
                         'Delete',
@@ -216,7 +224,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   content: Text('Failed to update currency: ${e.toString()}'),
                   backgroundColor: AppColors.error,
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               );
             }
@@ -540,7 +549,10 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(children: children),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Column(children: children),
+      ),
     );
   }
 
@@ -626,76 +638,76 @@ class _CurrencyPickerDialog extends StatefulWidget {
 
 class _CurrencyPickerDialogState extends State<_CurrencyPickerDialog> {
   static const _allCurrencies = [
-    {'code': 'USD', 'symbol': '\$',    'name': 'US Dollar'},
-    {'code': 'EUR', 'symbol': '€',    'name': 'Euro'},
-    {'code': 'GBP', 'symbol': '£',    'name': 'British Pound'},
-    {'code': 'INR', 'symbol': '₹',    'name': 'Indian Rupee'},
-    {'code': 'JPY', 'symbol': '¥',    'name': 'Japanese Yen'},
-    {'code': 'CAD', 'symbol': 'C\$',  'name': 'Canadian Dollar'},
-    {'code': 'AUD', 'symbol': 'A\$',  'name': 'Australian Dollar'},
-    {'code': 'BDT', 'symbol': '৳',    'name': 'Bangladeshi Taka'},
-    {'code': 'CHF', 'symbol': 'Fr',   'name': 'Swiss Franc'},
-    {'code': 'CNY', 'symbol': '¥',    'name': 'Chinese Yuan'},
-    {'code': 'BRL', 'symbol': 'R\$',  'name': 'Brazilian Real'},
-    {'code': 'RUB', 'symbol': '₽',    'name': 'Russian Ruble'},
-    {'code': 'KRW', 'symbol': '₩',    'name': 'South Korean Won'},
-    {'code': 'SGD', 'symbol': 'S\$',  'name': 'Singapore Dollar'},
+    {'code': 'USD', 'symbol': '\$', 'name': 'US Dollar'},
+    {'code': 'EUR', 'symbol': '€', 'name': 'Euro'},
+    {'code': 'GBP', 'symbol': '£', 'name': 'British Pound'},
+    {'code': 'INR', 'symbol': '₹', 'name': 'Indian Rupee'},
+    {'code': 'JPY', 'symbol': '¥', 'name': 'Japanese Yen'},
+    {'code': 'CAD', 'symbol': 'C\$', 'name': 'Canadian Dollar'},
+    {'code': 'AUD', 'symbol': 'A\$', 'name': 'Australian Dollar'},
+    {'code': 'BDT', 'symbol': '৳', 'name': 'Bangladeshi Taka'},
+    {'code': 'CHF', 'symbol': 'Fr', 'name': 'Swiss Franc'},
+    {'code': 'CNY', 'symbol': '¥', 'name': 'Chinese Yuan'},
+    {'code': 'BRL', 'symbol': 'R\$', 'name': 'Brazilian Real'},
+    {'code': 'RUB', 'symbol': '₽', 'name': 'Russian Ruble'},
+    {'code': 'KRW', 'symbol': '₩', 'name': 'South Korean Won'},
+    {'code': 'SGD', 'symbol': 'S\$', 'name': 'Singapore Dollar'},
     {'code': 'NZD', 'symbol': 'NZ\$', 'name': 'New Zealand Dollar'},
     {'code': 'MXN', 'symbol': 'MX\$', 'name': 'Mexican Peso'},
     {'code': 'HKD', 'symbol': 'HK\$', 'name': 'Hong Kong Dollar'},
-    {'code': 'TRY', 'symbol': '₺',    'name': 'Turkish Lira'},
-    {'code': 'ZAR', 'symbol': 'R',    'name': 'South African Rand'},
-    {'code': 'SEK', 'symbol': 'kr',   'name': 'Swedish Krona'},
-    {'code': 'NOK', 'symbol': 'kr',   'name': 'Norwegian Krone'},
-    {'code': 'DKK', 'symbol': 'kr',   'name': 'Danish Krone'},
-    {'code': 'IDR', 'symbol': 'Rp',   'name': 'Indonesian Rupiah'},
-    {'code': 'MYR', 'symbol': 'RM',   'name': 'Malaysian Ringgit'},
-    {'code': 'PHP', 'symbol': '₱',    'name': 'Philippine Peso'},
-    {'code': 'THB', 'symbol': '฿',    'name': 'Thai Baht'},
-    {'code': 'VND', 'symbol': '₫',    'name': 'Vietnamese Dong'},
-    {'code': 'AED', 'symbol': 'د.إ',  'name': 'UAE Dirham'},
-    {'code': 'SAR', 'symbol': '﷼',    'name': 'Saudi Riyal'},
-    {'code': 'EGP', 'symbol': 'E£',   'name': 'Egyptian Pound'},
-    {'code': 'PKR', 'symbol': '₨',    'name': 'Pakistani Rupee'},
-    {'code': 'LKR', 'symbol': '₨',    'name': 'Sri Lankan Rupee'},
-    {'code': 'NPR', 'symbol': '₨',    'name': 'Nepalese Rupee'},
-    {'code': 'MMK', 'symbol': 'K',    'name': 'Myanmar Kyat'},
-    {'code': 'KZT', 'symbol': '₸',    'name': 'Kazakhstani Tenge'},
-    {'code': 'UAH', 'symbol': '₴',    'name': 'Ukrainian Hryvnia'},
-    {'code': 'PLN', 'symbol': 'zł',   'name': 'Polish Złoty'},
-    {'code': 'CZK', 'symbol': 'Kč',   'name': 'Czech Koruna'},
-    {'code': 'HUF', 'symbol': 'Ft',   'name': 'Hungarian Forint'},
-    {'code': 'RON', 'symbol': 'lei',  'name': 'Romanian Leu'},
-    {'code': 'BGN', 'symbol': 'лв',   'name': 'Bulgarian Lev'},
-    {'code': 'HRK', 'symbol': 'kn',   'name': 'Croatian Kuna'},
-    {'code': 'ISK', 'symbol': 'kr',   'name': 'Icelandic Króna'},
-    {'code': 'GEL', 'symbol': '₾',    'name': 'Georgian Lari'},
-    {'code': 'AMD', 'symbol': '֏',    'name': 'Armenian Dram'},
-    {'code': 'AZN', 'symbol': '₼',    'name': 'Azerbaijani Manat'},
-    {'code': 'NGN', 'symbol': '₦',    'name': 'Nigerian Naira'},
-    {'code': 'GHS', 'symbol': '₵',    'name': 'Ghanaian Cedi'},
-    {'code': 'KES', 'symbol': 'KSh',  'name': 'Kenyan Shilling'},
-    {'code': 'TZS', 'symbol': 'TSh',  'name': 'Tanzanian Shilling'},
+    {'code': 'TRY', 'symbol': '₺', 'name': 'Turkish Lira'},
+    {'code': 'ZAR', 'symbol': 'R', 'name': 'South African Rand'},
+    {'code': 'SEK', 'symbol': 'kr', 'name': 'Swedish Krona'},
+    {'code': 'NOK', 'symbol': 'kr', 'name': 'Norwegian Krone'},
+    {'code': 'DKK', 'symbol': 'kr', 'name': 'Danish Krone'},
+    {'code': 'IDR', 'symbol': 'Rp', 'name': 'Indonesian Rupiah'},
+    {'code': 'MYR', 'symbol': 'RM', 'name': 'Malaysian Ringgit'},
+    {'code': 'PHP', 'symbol': '₱', 'name': 'Philippine Peso'},
+    {'code': 'THB', 'symbol': '฿', 'name': 'Thai Baht'},
+    {'code': 'VND', 'symbol': '₫', 'name': 'Vietnamese Dong'},
+    {'code': 'AED', 'symbol': 'د.إ', 'name': 'UAE Dirham'},
+    {'code': 'SAR', 'symbol': '﷼', 'name': 'Saudi Riyal'},
+    {'code': 'EGP', 'symbol': 'E£', 'name': 'Egyptian Pound'},
+    {'code': 'PKR', 'symbol': '₨', 'name': 'Pakistani Rupee'},
+    {'code': 'LKR', 'symbol': '₨', 'name': 'Sri Lankan Rupee'},
+    {'code': 'NPR', 'symbol': '₨', 'name': 'Nepalese Rupee'},
+    {'code': 'MMK', 'symbol': 'K', 'name': 'Myanmar Kyat'},
+    {'code': 'KZT', 'symbol': '₸', 'name': 'Kazakhstani Tenge'},
+    {'code': 'UAH', 'symbol': '₴', 'name': 'Ukrainian Hryvnia'},
+    {'code': 'PLN', 'symbol': 'zł', 'name': 'Polish Złoty'},
+    {'code': 'CZK', 'symbol': 'Kč', 'name': 'Czech Koruna'},
+    {'code': 'HUF', 'symbol': 'Ft', 'name': 'Hungarian Forint'},
+    {'code': 'RON', 'symbol': 'lei', 'name': 'Romanian Leu'},
+    {'code': 'BGN', 'symbol': 'лв', 'name': 'Bulgarian Lev'},
+    {'code': 'HRK', 'symbol': 'kn', 'name': 'Croatian Kuna'},
+    {'code': 'ISK', 'symbol': 'kr', 'name': 'Icelandic Króna'},
+    {'code': 'GEL', 'symbol': '₾', 'name': 'Georgian Lari'},
+    {'code': 'AMD', 'symbol': '֏', 'name': 'Armenian Dram'},
+    {'code': 'AZN', 'symbol': '₼', 'name': 'Azerbaijani Manat'},
+    {'code': 'NGN', 'symbol': '₦', 'name': 'Nigerian Naira'},
+    {'code': 'GHS', 'symbol': '₵', 'name': 'Ghanaian Cedi'},
+    {'code': 'KES', 'symbol': 'KSh', 'name': 'Kenyan Shilling'},
+    {'code': 'TZS', 'symbol': 'TSh', 'name': 'Tanzanian Shilling'},
     {'code': 'MAD', 'symbol': 'د.م.', 'name': 'Moroccan Dirham'},
-    {'code': 'TND', 'symbol': 'د.ت',  'name': 'Tunisian Dinar'},
-    {'code': 'DZD', 'symbol': 'دج',   'name': 'Algerian Dinar'},
-    {'code': 'LYD', 'symbol': 'ل.د',  'name': 'Libyan Dinar'},
-    {'code': 'QAR', 'symbol': 'ر.ق',  'name': 'Qatari Riyal'},
-    {'code': 'KWD', 'symbol': 'د.ك',  'name': 'Kuwaiti Dinar'},
-    {'code': 'BHD', 'symbol': 'BD',   'name': 'Bahraini Dinar'},
+    {'code': 'TND', 'symbol': 'د.ت', 'name': 'Tunisian Dinar'},
+    {'code': 'DZD', 'symbol': 'دج', 'name': 'Algerian Dinar'},
+    {'code': 'LYD', 'symbol': 'ل.د', 'name': 'Libyan Dinar'},
+    {'code': 'QAR', 'symbol': 'ر.ق', 'name': 'Qatari Riyal'},
+    {'code': 'KWD', 'symbol': 'د.ك', 'name': 'Kuwaiti Dinar'},
+    {'code': 'BHD', 'symbol': 'BD', 'name': 'Bahraini Dinar'},
     {'code': 'OMR', 'symbol': 'ر.ع.', 'name': 'Omani Rial'},
-    {'code': 'JOD', 'symbol': 'JD',   'name': 'Jordanian Dinar'},
-    {'code': 'IQD', 'symbol': 'ع.د',  'name': 'Iraqi Dinar'},
-    {'code': 'IRR', 'symbol': '﷼',    'name': 'Iranian Rial'},
-    {'code': 'ILS', 'symbol': '₪',    'name': 'Israeli Shekel'},
-    {'code': 'TWD', 'symbol': 'NT\$',  'name': 'Taiwan Dollar'},
+    {'code': 'JOD', 'symbol': 'JD', 'name': 'Jordanian Dinar'},
+    {'code': 'IQD', 'symbol': 'ع.د', 'name': 'Iraqi Dinar'},
+    {'code': 'IRR', 'symbol': '﷼', 'name': 'Iranian Rial'},
+    {'code': 'ILS', 'symbol': '₪', 'name': 'Israeli Shekel'},
+    {'code': 'TWD', 'symbol': 'NT\$', 'name': 'Taiwan Dollar'},
     {'code': 'CLP', 'symbol': 'CLP\$', 'name': 'Chilean Peso'},
     {'code': 'COP', 'symbol': 'COL\$', 'name': 'Colombian Peso'},
-    {'code': 'ARS', 'symbol': 'AR\$',  'name': 'Argentine Peso'},
-    {'code': 'PEN', 'symbol': 'S/.',  'name': 'Peruvian Sol'},
-    {'code': 'BOB', 'symbol': 'Bs.',  'name': 'Bolivian Boliviano'},
-    {'code': 'PYG', 'symbol': '₲',    'name': 'Paraguayan Guaraní'},
-    {'code': 'UYU', 'symbol': '\$U',   'name': 'Uruguayan Peso'},
+    {'code': 'ARS', 'symbol': 'AR\$', 'name': 'Argentine Peso'},
+    {'code': 'PEN', 'symbol': 'S/.', 'name': 'Peruvian Sol'},
+    {'code': 'BOB', 'symbol': 'Bs.', 'name': 'Bolivian Boliviano'},
+    {'code': 'PYG', 'symbol': '₲', 'name': 'Paraguayan Guaraní'},
+    {'code': 'UYU', 'symbol': '\$U', 'name': 'Uruguayan Peso'},
     {'code': 'VEF', 'symbol': 'Bs.F', 'name': 'Venezuelan Bolívar'},
   ];
 
@@ -868,7 +880,9 @@ class _CurrencyPickerDialogState extends State<_CurrencyPickerDialog> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.search_off_rounded,
-                              size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+                              size: 48,
+                              color:
+                                  cs.onSurfaceVariant.withValues(alpha: 0.4)),
                           const SizedBox(height: 12),
                           Text(
                             'No currencies found',
@@ -914,12 +928,14 @@ class _CurrencyPickerDialogState extends State<_CurrencyPickerDialog> {
                                     horizontal: 12, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppColors.primary.withValues(alpha: 0.08)
+                                      ? AppColors.primary
+                                          .withValues(alpha: 0.08)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(14),
                                   border: isSelected
                                       ? Border.all(
-                                          color: AppColors.primary.withValues(alpha: 0.3),
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.3),
                                           width: 1.5)
                                       : null,
                                 ),
@@ -944,9 +960,10 @@ class _CurrencyPickerDialogState extends State<_CurrencyPickerDialog> {
                                               ? Colors.white
                                               : cs.onSurfaceVariant,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: currency['symbol']!.length > 2
-                                              ? 11
-                                              : 16,
+                                          fontSize:
+                                              currency['symbol']!.length > 2
+                                                  ? 11
+                                                  : 16,
                                         ),
                                         maxLines: 1,
                                       ),
