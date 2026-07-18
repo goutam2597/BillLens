@@ -20,6 +20,9 @@ class UserEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool hasPassword;
+  final String? accountStatus;
+  final DateTime? blockedAt;
+  final DateTime? deletionRequestedAt;
 
   const UserEntity({
     required this.id,
@@ -42,6 +45,9 @@ class UserEntity {
     required this.createdAt,
     required this.updatedAt,
     this.hasPassword = true,
+    this.accountStatus,
+    this.blockedAt,
+    this.deletionRequestedAt,
   });
 
   bool get isPremium => subscriptionStatus == 'premium';
@@ -82,6 +88,9 @@ class UserEntity {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? hasPassword,
+    String? accountStatus,
+    DateTime? blockedAt,
+    DateTime? deletionRequestedAt,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -104,6 +113,9 @@ class UserEntity {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       hasPassword: hasPassword ?? this.hasPassword,
+      accountStatus: accountStatus ?? this.accountStatus,
+      blockedAt: blockedAt ?? this.blockedAt,
+      deletionRequestedAt: deletionRequestedAt ?? this.deletionRequestedAt,
     );
   }
 

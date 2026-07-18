@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/auth/auth_session_manager.dart';
 import 'core/di/injection.dart';
 import 'core/local/currency_service.dart';
 import 'core/router/app_router.dart';
@@ -42,14 +45,49 @@ class BillLensApp extends StatelessWidget {
             ..add(LoadDeletionStatus()),
         ),
       ],
-      child: MaterialApp.router(
-        title: 'BillLens',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
-        routerConfig: AppRouter.router,
+      child: _SessionGuard(
+        child: MaterialApp.router(
+          title: 'BillLens',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.light,
+          routerConfig: AppRouter.router,
+        ),
       ),
     );
   }
+}
+
+/// Listens for global session-invalid signals from network interceptors and
+/// forces a local logout so the router redirects to the login screen.
+class _SessionGuard extends StatefulWidget {
+  final Widget child;
+  const _SessionGuard({required this.child});
+
+  @override
+  State<_SessionGuard> createState() => _SessionGuardState();
+}
+
+class _SessionGuardState extends State<_SessionGuard> {
+  StreamSubscription? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = AuthSessionManager.instance.onInvalidated.listen((_) {
+      if (mounted) {
+        context.read<AuthBloc>().add(ForceLogoutEvent());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

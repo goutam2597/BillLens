@@ -48,6 +48,15 @@ class ProfileError extends ProfileState {
   List<Object> get props => [message];
 }
 
+/// Emitted when the current session/user is no longer valid (deleted,
+/// blocked, token revoked). The UI should force a logout and redirect.
+class ProfileSessionInvalid extends ProfileState {
+  final String message;
+  const ProfileSessionInvalid(this.message);
+  @override
+  List<Object> get props => [message];
+}
+
 // Deletion request states
 class DeletionRequested extends ProfileState {
   final Map<String, dynamic> data;

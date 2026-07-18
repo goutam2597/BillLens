@@ -81,6 +81,16 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, void>> forceLogout() async {
+    try {
+      await localDataSource.clearAuthData();
+      return const Right(null);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> logout() async {
     try {
       await remoteDataSource.logout();
@@ -145,12 +155,22 @@ class AuthRepositoryImpl implements AuthRepository {
           createdAt: freshUser.createdAt,
           updatedAt: freshUser.updatedAt,
           hasPassword: freshUser.hasPassword,
+          accountStatus: freshUser.accountStatus,
+          blockedAt: freshUser.blockedAt,
+          deletionRequestedAt: freshUser.deletionRequestedAt,
         );
         await localDataSource.cacheUser(userToCache);
         await _syncCurrencyToPrefs(userToCache.currency);
         return Right(userToCache);
+      } on AuthenticationException catch (e) {
+        // Session is invalid or the account has been deleted/blocked.
+        // Clear local credentials and propagate the failure so the UI can
+        // force a redirect to the login screen.
+        await localDataSource.clearAuthData();
+        return Left(AuthenticationFailure(e.message));
       } catch (_) {
-        // If backend fetch fails (offline), return cached and sync its currency to prefs
+        // If backend fetch fails for any other reason (offline/server error),
+        // return cached user and sync its currency to prefs.
         if (cachedUser != null) {
           await _syncCurrencyToPrefs(cachedUser.currency);
         }

@@ -5,6 +5,7 @@ import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../domain/usecases/request_deletion_usecase.dart';
 import '../../domain/usecases/get_deletion_status_usecase.dart';
 import '../../domain/usecases/cancel_deletion_usecase.dart';
+import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/usecase.dart';
 import 'profile_event.dart';
 import 'profile_state.dart';
@@ -57,15 +58,36 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     if (emit.isDone) return;
 
     result.fold(
-      (failure) => emit(ProfileError(failure.message)),
-      (user) {
-        if (user != null) {
-          emit(ProfileLoaded(user: user, deletionStatus: deletionData));
+      (failure) {
+        if (failure is AuthenticationFailure ||
+            _isSessionInvalidMessage(failure.message)) {
+          emit(ProfileSessionInvalid(failure.message));
         } else {
-          emit(const ProfileError('No user found'));
+          emit(ProfileError(failure.message));
         }
       },
+      (user) {
+        if (user == null) {
+          emit(const ProfileSessionInvalid('No user found'));
+          return;
+        }
+        if (user.accountStatus == 'blocked' || user.blockedAt != null) {
+          emit(const ProfileSessionInvalid('Account blocked'));
+          return;
+        }
+        emit(ProfileLoaded(user: user, deletionStatus: deletionData));
+      },
     );
+  }
+
+  bool _isSessionInvalidMessage(String message) {
+    final lower = message.toLowerCase();
+    return lower.contains('user not found') ||
+        lower.contains('not found') ||
+        lower.contains('invalid token') ||
+        lower.contains('unauthenticated') ||
+        lower.contains('unauthorized') ||
+        lower.contains('account blocked');
   }
 
   Future<void> _onUpdateProfile(

@@ -22,6 +22,9 @@ class UserModel extends UserEntity {
     required super.createdAt,
     required super.updatedAt,
     super.hasPassword = true,
+    super.accountStatus,
+    super.blockedAt,
+    super.deletionRequestedAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -52,6 +55,13 @@ class UserModel extends UserEntity {
           ? DateTime.tryParse(json['updated_at']) ?? DateTime.now()
           : DateTime.now(),
       hasPassword: json['has_password'] == true || json['has_password'] == 1,
+      accountStatus: json['account_status']?.toString(),
+      blockedAt: json['blocked_at'] != null
+          ? DateTime.tryParse(json['blocked_at'].toString())
+          : null,
+      deletionRequestedAt: json['deletion_requested_at'] != null
+          ? DateTime.tryParse(json['deletion_requested_at'].toString())
+          : null,
     );
   }
 
@@ -77,6 +87,9 @@ class UserModel extends UserEntity {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'has_password': hasPassword,
+      'account_status': accountStatus,
+      'blocked_at': blockedAt?.toIso8601String(),
+      'deletion_requested_at': deletionRequestedAt?.toIso8601String(),
     };
   }
 
@@ -102,6 +115,9 @@ class UserModel extends UserEntity {
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
       hasPassword: entity.hasPassword,
+      accountStatus: entity.accountStatus,
+      blockedAt: entity.blockedAt,
+      deletionRequestedAt: entity.deletionRequestedAt,
     );
   }
 }

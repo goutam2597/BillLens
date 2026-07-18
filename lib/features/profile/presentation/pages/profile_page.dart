@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
+import 'package:billlens/core/utils/app_logger.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -16,6 +17,7 @@ import '../../../auth/data/repositories/user_repository.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
+import '../widgets/delete_account_dialog.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -25,9 +27,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final TextEditingController _reasonController = TextEditingController();
-  bool _understandChecked = false;
-
   @override
   void initState() {
     super.initState();
@@ -39,12 +38,6 @@ class _ProfilePageState extends State<ProfilePage> {
         } catch (_) {}
       }
     });
-  }
-
-  @override
-  void dispose() {
-    _reasonController.dispose();
-    super.dispose();
   }
 
   void _showLogoutDialog() {
@@ -139,252 +132,20 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showDeleteDialog({Map<String, dynamic>? existingRequest}) {
-    final hasPending =
-        existingRequest != null && existingRequest['has_request'] == true;
-    final request =
-        hasPending ? existingRequest['request'] as Map<String, dynamic>? : null;
-    final daysRemaining =
-        request?['days_remaining'] ?? existingRequest?['days_remaining'] ?? 30;
-    final scheduled = request?['scheduled_deletion_at'] ??
-        existingRequest?['scheduled_deletion_at'] ??
-        '';
-    final requestedAt =
-        request?['requested_at'] ?? existingRequest?['requested_at'] ?? '';
-
-    _reasonController.clear();
-    _understandChecked = false;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          backgroundColor: Theme.of(ctx).colorScheme.surface,
-          elevation: 0,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color:
-                              (hasPending ? AppColors.warning : AppColors.error)
-                                  .withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          hasPending
-                              ? Icons.hourglass_top_rounded
-                              : Icons.delete_forever_rounded,
-                          color:
-                              hasPending ? AppColors.warning : AppColors.error,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              hasPending
-                                  ? 'Delete Requested'
-                                  : 'Delete Account?',
-                              style: GoogleFonts.outfit(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: Theme.of(ctx).colorScheme.onSurface),
-                            ),
-                            if (hasPending)
-                              Text('$daysRemaining days remaining',
-                                  style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      color: AppColors.warning,
-                                      fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (hasPending) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            Icon(Icons.info_outline_rounded,
-                                size: 16, color: AppColors.warning),
-                            const SizedBox(width: 6),
-                            Text('Request Pending',
-                                style: GoogleFonts.outfit(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.warning))
-                          ]),
-                          const SizedBox(height: 8),
-                          Text(
-                              'Requested: ${requestedAt.toString().substring(0, 19)}',
-                              style: GoogleFonts.outfit(
-                                  fontSize: 12, color: Colors.black87)),
-                          const SizedBox(height: 4),
-                          Text(
-                              'Scheduled deletion: ${scheduled.toString().substring(0, 10)}',
-                              style: GoogleFonts.outfit(
-                                  fontSize: 12, color: Colors.black87)),
-                          const SizedBox(height: 4),
-                          Text(
-                              'Auto-deletion in $daysRemaining days if admin takes no action. Admin will review your account status, dues, etc.',
-                              style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  color: Colors.grey[700],
-                                  height: 1.3)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                        'Your account is currently marked for deletion. You can cancel the request to keep your account active.',
-                        style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                            height: 1.4)),
-                  ] else ...[
-                    Text(
-                      'This will not delete your account instantly. Instead, it will send a deletion request to admin. Admin will check your account status, dues, and other details. If everything is ok, admin will delete manually. If admin takes no action within 30 days, your account will be automatically deleted.',
-                      style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                          height: 1.4),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _reasonController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Reason for deletion (optional)',
-                        hintText: 'Why are you leaving?',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        filled: true,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Checkbox(
-                          value: _understandChecked,
-                          onChanged: (v) => setDialogState(
-                              () => _understandChecked = v ?? false),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'I understand that my data, expenses, and receipts will be permanently deleted after admin approval or after 30 days auto-deletion.',
-                            style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: Colors.black87,
-                                height: 1.3),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            side: BorderSide(
-                                color:
-                                    Theme.of(ctx).colorScheme.outlineVariant),
-                          ),
-                          child: Text('Cancel',
-                              style: GoogleFonts.outfit(
-                                  color: Theme.of(ctx).colorScheme.onSurface,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: hasPending
-                              ? () {
-                                  Navigator.of(ctx).pop();
-                                  context
-                                      .read<ProfileBloc>()
-                                      .add(CancelDeleteRequest());
-                                }
-                              : (_understandChecked
-                                  ? () {
-                                      final reason =
-                                          _reasonController.text.trim();
-                                      Navigator.of(ctx).pop();
-                                      context.read<ProfileBloc>().add(
-                                          RequestDeleteAccount(
-                                              reason: reason.isEmpty
-                                                  ? null
-                                                  : reason));
-                                    }
-                                  : null),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            backgroundColor: hasPending
-                                ? AppColors.primary
-                                : AppColors.error,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: Text(
-                              hasPending
-                                  ? 'Cancel Request'
-                                  : 'Request Deletion',
-                              style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (!hasPending) ...[
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Text(
-                        'Admin will review within 30 days. Auto-deletion after 30 days if no action.',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+    // Use new premium dialog widget
+    showDeleteAccountDialog(
+      context,
+      deletionData: existingRequest,
+      onRequest: (reason) async {
+        AppLogger.i('Requesting account deletion: $reason');
+        if (!mounted) return;
+        context.read<ProfileBloc>().add(RequestDeleteAccount(reason: reason));
+      },
+      onCancelRequest: () async {
+        AppLogger.i('Cancelling deletion request');
+        if (!mounted) return;
+        context.read<ProfileBloc>().add(CancelDeleteRequest());
+      },
     );
   }
 
@@ -407,7 +168,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
                   Text('Updating currency to $code...'),
@@ -421,17 +183,20 @@ class _ProfilePageState extends State<ProfilePage> {
           try {
             if (user != null) {
               final repo = getIt<UserRepository>();
-              final result = await repo.updateProfile(userId: user.id, currency: code);
+              final result =
+                  await repo.updateProfile(userId: user.id, currency: code);
               result.fold(
                 (failure) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Failed to update currency: ${failure.message}'),
+                        content: Text(
+                            'Failed to update currency: ${failure.message}'),
                         backgroundColor: AppColors.error,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                     );
                   }
@@ -443,10 +208,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Currency changed to $code (${updatedUser.currency})'),
+                        content: Text(
+                            'Currency changed to $code (${updatedUser.currency})'),
                         backgroundColor: AppColors.accent,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                     );
                     context.read<AuthBloc>().add(CheckAuthStatus());
@@ -463,7 +230,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ScaffoldMessenger.of(context).clearSnackBars();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Currency saved locally as $code. Will sync on login.'),
+                    content: Text(
+                        'Currency saved locally as $code. Will sync on login.'),
                     backgroundColor: AppColors.warning,
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -538,6 +306,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     backgroundColor: AppColors.error,
                     behavior: SnackBarBehavior.floating),
               );
+            } else if (state is ProfileSessionInvalid) {
+              // The backend rejected the session (user deleted/blocked/token
+              // revoked). Force a local logout so go_router redirects to login.
+              context.read<AuthBloc>().add(ForceLogoutEvent());
             } else if (state is ProfileError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -610,94 +382,334 @@ class _ProfilePageState extends State<ProfilePage> {
 
                                   final request = deletionData['request']
                                       as Map<String, dynamic>?;
-                                  final daysRemaining =
-                                      request?['days_remaining'] ??
-                                          deletionData['days_remaining'] ??
-                                          30;
+                                  final rawDays = request?['days_remaining'] ??
+                                      deletionData['days_remaining'];
+                                  int daysRemaining = 30;
+                                  if (rawDays is int) daysRemaining = rawDays;
+                                  if (rawDays is String) {
+                                    daysRemaining = int.tryParse(rawDays) ?? 30;
+                                  }
+                                  if (rawDays is double) {
+                                    daysRemaining = rawDays.toInt();
+                                  }
+
                                   final scheduled = request?[
                                           'scheduled_deletion_at'] ??
                                       deletionData['scheduled_deletion_at'] ??
                                       '';
+                                  final requestedAtRaw =
+                                      request?['requested_at'] ??
+                                          deletionData['requested_at'] ??
+                                          '';
+
+                                  int daysPassed = 0;
+                                  final rawPassed =
+                                      request?['days_passed'] ?? 0;
+                                  if (rawPassed is int) daysPassed = rawPassed;
+                                  if (rawPassed is String) {
+                                    daysPassed = int.tryParse(rawPassed) ?? 0;
+                                  }
+                                  if (daysPassed == 0 &&
+                                      requestedAtRaw.toString().isNotEmpty) {
+                                    try {
+                                      final rd = DateTime.parse(
+                                          requestedAtRaw.toString());
+                                      daysPassed = DateTime.now()
+                                          .difference(rd)
+                                          .inDays
+                                          .clamp(0, 30);
+                                    } catch (_) {}
+                                  }
+
+                                  String fmtDate(String? raw) {
+                                    if (raw == null || raw.isEmpty) return '--';
+                                    try {
+                                      final dt = DateTime.parse(raw);
+                                      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+                                    } catch (_) {
+                                      return raw.length > 10
+                                          ? raw.substring(0, 10)
+                                          : raw;
+                                    }
+                                  }
+
+                                  final progress =
+                                      (daysPassed / 30.0).clamp(0.0, 1.0);
+                                  final cs = Theme.of(context).colorScheme;
 
                                   return Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
-                                      color: AppColors.warning
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(12),
+                                      color: cs.surface,
+                                      borderRadius: BorderRadius.circular(18),
                                       border: Border.all(
                                           color: AppColors.warning
-                                              .withValues(alpha: 0.3)),
+                                              .withValues(alpha: 0.28),
+                                          width: 1.2),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.warning
+                                              .withValues(alpha: 0.1),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
                                     ),
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          children: [
-                                            Icon(Icons.warning_amber_rounded,
-                                                size: 18,
-                                                color: AppColors.warning),
-                                            const SizedBox(width: 8),
-                                            Text('Delete Requested',
-                                                style: GoogleFonts.outfit(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: AppColors.warning)),
-                                            const Spacer(),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4),
-                                              decoration: BoxDecoration(
-                                                  color: AppColors.error
-                                                      .withValues(alpha: 0.15),
-                                                  borderRadius:
-                                                      BorderRadius.circular(6)),
-                                              child: Text(
-                                                  '${daysRemaining}d left',
-                                                  style: GoogleFonts.outfit(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: AppColors.error)),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                            'Scheduled deletion: ${scheduled.toString().substring(0, 10)}',
-                                            style: GoogleFonts.outfit(
-                                                fontSize: 12,
-                                                color: Colors.black87)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                            'Admin will review. Auto-deletion in $daysRemaining days if no action.',
-                                            style: GoogleFonts.outfit(
-                                                fontSize: 11,
-                                                color: Colors.grey[700])),
-                                        const SizedBox(height: 10),
-                                        SizedBox(
+                                        Container(
                                           width: double.infinity,
-                                          child: OutlinedButton(
-                                            onPressed: () => context
-                                                .read<ProfileBloc>()
-                                                .add(CancelDeleteRequest()),
-                                            style: OutlinedButton.styleFrom(
-                                              side: BorderSide(
-                                                  color: AppColors.warning),
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8)),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 12),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                AppColors.warning
+                                                    .withValues(alpha: 0.16),
+                                                AppColors.warning
+                                                    .withValues(alpha: 0.04),
+                                              ],
                                             ),
-                                            child: Text(
-                                                'Cancel Deletion Request',
-                                                style: GoogleFonts.outfit(
-                                                    color: AppColors.warning,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 12)),
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                                    top: Radius.circular(17)),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.all(7),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.warning
+                                                      .withValues(alpha: 0.18),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: const Icon(
+                                                    Icons.warning_amber_rounded,
+                                                    size: 16,
+                                                    color: AppColors.warning),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text('Deletion Requested',
+                                                  style: GoogleFonts.outfit(
+                                                      fontSize: 13.5,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color:
+                                                          AppColors.warning)),
+                                              const Spacer(),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: (daysRemaining <= 3
+                                                          ? AppColors.error
+                                                          : AppColors.warning)
+                                                      .withValues(alpha: 0.14),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                        Icons
+                                                            .hourglass_bottom_rounded,
+                                                        size: 12,
+                                                        color: daysRemaining <=
+                                                                3
+                                                            ? AppColors.error
+                                                            : AppColors
+                                                                .warning),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                        '$daysRemaining days left',
+                                                        style: GoogleFonts.outfit(
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                            color: daysRemaining <=
+                                                                    3
+                                                                ? AppColors
+                                                                    .error
+                                                                : AppColors
+                                                                    .warning)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              16, 14, 16, 14),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _DeletionMiniChip(
+                                                      icon: Icons
+                                                          .calendar_today_rounded,
+                                                      label: 'Requested',
+                                                      value: fmtDate(
+                                                          requestedAtRaw
+                                                              .toString()),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: _DeletionMiniChip(
+                                                      icon: Icons.event_rounded,
+                                                      label: 'Scheduled',
+                                                      value: fmtDate(
+                                                          scheduled.toString()),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: _DeletionMiniChip(
+                                                      icon: Icons
+                                                          .timelapse_rounded,
+                                                      label: 'Passed',
+                                                      value: '$daysPassed days',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 14),
+                                              Row(
+                                                children: [
+                                                  Text('Progress',
+                                                      style: GoogleFonts.outfit(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: cs
+                                                              .onSurfaceVariant)),
+                                                  const Spacer(),
+                                                  Text('Day $daysPassed of 30',
+                                                      style: GoogleFonts.outfit(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: cs
+                                                              .onSurfaceVariant)),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                                child: LinearProgressIndicator(
+                                                  value: progress,
+                                                  minHeight: 6,
+                                                  backgroundColor: Colors.black
+                                                      .withValues(alpha: 0.06),
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation(
+                                                          daysRemaining <= 3
+                                                              ? AppColors.error
+                                                              : AppColors
+                                                                  .warning),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                  'Admin will review your account. If no action within $daysRemaining days, your account will be automatically deleted. All expenses and receipts will be permanently erased.',
+                                                  style: GoogleFonts.outfit(
+                                                      fontSize: 12,
+                                                      height: 1.45,
+                                                      color:
+                                                          cs.onSurfaceVariant)),
+                                              const SizedBox(height: 14),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: FilledButton.icon(
+                                                      onPressed: () =>
+                                                          _showDeleteDialog(
+                                                              existingRequest:
+                                                                  deletionData),
+                                                      icon: const Icon(
+                                                          Icons
+                                                              .visibility_outlined,
+                                                          size: 16),
+                                                      label: Text('Details',
+                                                          style: GoogleFonts
+                                                              .outfit(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  fontSize:
+                                                                      12.5)),
+                                                      style: FilledButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            Colors.white,
+                                                        foregroundColor:
+                                                            cs.onSurface,
+                                                        side: BorderSide(
+                                                            color: cs
+                                                                .outlineVariant),
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        10)),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 16),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: FilledButton.icon(
+                                                      onPressed: () => context
+                                                          .read<ProfileBloc>()
+                                                          .add(
+                                                              CancelDeleteRequest()),
+                                                      icon: const Icon(
+                                                          Icons.undo_rounded,
+                                                          size: 16),
+                                                      label: Text(
+                                                          'Keep Account',
+                                                          style: GoogleFonts
+                                                              .outfit(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontSize:
+                                                                      12.5)),
+                                                      style: FilledButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            AppColors.primary,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        10)),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 16),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
@@ -756,7 +768,9 @@ class _ProfilePageState extends State<ProfilePage> {
               context: context,
               icon: Icons.attach_money,
               title: 'Currency',
-              trailing: (user?.currency.isNotEmpty == true ? user!.currency : getIt<LocalStorageService>().currency),
+              trailing: (user?.currency.isNotEmpty == true
+                  ? user!.currency
+                  : getIt<LocalStorageService>().currency),
               iconColor: const Color(0xFF10B981),
               onTap: () => _showCurrencySelector(user),
             ),
@@ -1057,6 +1071,48 @@ class _ProfilePageState extends State<ProfilePage> {
       indent: 16,
       endIndent: 16,
       color: color,
+    );
+  }
+}
+
+class _DeletionMiniChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _DeletionMiniChip(
+      {required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 13, color: cs.onSurfaceVariant),
+          const SizedBox(height: 3),
+          Text(label,
+              style: GoogleFonts.outfit(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurfaceVariant,
+                  letterSpacing: 0.3)),
+          const SizedBox(height: 2),
+          Text(value,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ],
+      ),
     );
   }
 }

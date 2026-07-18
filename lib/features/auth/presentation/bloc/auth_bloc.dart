@@ -27,6 +27,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterEvent>(_onRegister);
     on<GoogleLoginEvent>(_onGoogleLogin);
     on<LogoutEvent>(_onLogout);
+    on<ForceLogoutEvent>(_onForceLogout);
   }
 
   Future<void> _onCheckAuthStatus(
@@ -104,6 +105,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     result.fold(
       (failure) => emit(AuthError(failure.message)),
       (user) => emit(Authenticated(user)),
+    );
+  }
+
+  Future<void> _onForceLogout(
+    ForceLogoutEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    final result = await _authRepository.forceLogout();
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(const Unauthenticated()),
     );
   }
 }

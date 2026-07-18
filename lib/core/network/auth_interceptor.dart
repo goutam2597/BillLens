@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:injectable/injectable.dart';
 
+import '../auth/auth_session_manager.dart';
+
 @singleton
 class AuthInterceptor extends Interceptor {
   final FlutterSecureStorage _secureStorage;
@@ -24,9 +26,18 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    if (err.response?.statusCode == 401) {
-      // TODO: Handle token expiration / logout logic
+    final statusCode = err.response?.statusCode;
+    if (statusCode == 401 || statusCode == 403) {
+      // The backend rejected the session. Clear local credentials and signal
+      // the app to force a logout so the user is redirected to login.
+      _clearCredentials();
+      AuthSessionManager.instance.invalidate();
     }
     return handler.next(err);
+  }
+
+  void _clearCredentials() {
+    _secureStorage.delete(key: 'auth_token');
+    _secureStorage.delete(key: 'cached_user');
   }
 }

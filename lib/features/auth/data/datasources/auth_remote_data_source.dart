@@ -172,14 +172,44 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.statusCode == 200) {
         final data = response.data['data'] as Map<String, dynamic>?;
         if (data != null) {
-          return UserModel.fromJson(data);
+          final user = UserModel.fromJson(data);
+          // Treat a blocked account as an authentication failure so the app
+          // forces a logout immediately.
+          if (user.accountStatus == 'blocked' || user.blockedAt != null) {
+            throw AuthenticationException(
+              data['blocked_reason']?.toString() ?? 'Account blocked',
+            );
+          }
+          return user;
         }
       }
       throw ServerException('Failed to fetch profile');
     } on DioException catch (e) {
-      throw ServerException(
-        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
-      );
+      final statusCode = e.response?.statusCode;
+      final message = (e.response?.data is Map
+              ? e.response?.data['message']
+              : null) ??
+          e.message ??
+          'Server error';
+
+      // 401/403/404 with "not found" means the session/token is invalid or
+      // the user has been deleted. Convert it to an auth exception so callers
+      // log the user out instead of silently falling back to cache.
+      if (statusCode == 401 ||
+          statusCode == 403 ||
+          (statusCode == 404 && _looksLikeSessionInvalid(message))) {
+        throw AuthenticationException(message);
+      }
+      throw ServerException(message);
     }
+  }
+
+  bool _looksLikeSessionInvalid(String message) {
+    final lower = message.toLowerCase();
+    return lower.contains('user not found') ||
+        lower.contains('not found') ||
+        lower.contains('invalid token') ||
+        lower.contains('unauthenticated') ||
+        lower.contains('unauthorized');
   }
 }

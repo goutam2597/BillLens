@@ -22,6 +22,10 @@ abstract class AuthRepository {
 
   Future<Either<Failure, void>> logout();
 
+  /// Clears local credentials without calling the backend logout endpoint.
+  /// Used when the session is already known to be invalid.
+  Future<Either<Failure, void>> forceLogout();
+
   Future<Either<Failure, UserEntity?>> getCurrentUser();
 
   Future<Either<Failure, void>> verifyOtp({

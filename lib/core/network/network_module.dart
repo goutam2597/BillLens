@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import 'auth_interceptor.dart';
+import 'dio_logger_interceptor.dart';
 
 @module
 abstract class NetworkModule {
@@ -22,15 +22,7 @@ abstract class NetworkModule {
     );
 
     dio.interceptors.add(authInterceptor);
-
-    dio.interceptors.add(PrettyDioLogger(
-      requestHeader: true,
-      requestBody: true,
-      responseBody: true,
-      responseHeader: false,
-      error: true,
-      compact: true,
-    ));
+    dio.interceptors.add(DioLoggerInterceptor());
 
     return dio;
   }

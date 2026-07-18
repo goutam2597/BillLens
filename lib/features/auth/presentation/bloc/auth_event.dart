@@ -40,6 +40,10 @@ class RegisterEvent extends AuthEvent {
 
 class LogoutEvent extends AuthEvent {}
 
+/// Clears local auth state immediately without calling the backend.
+/// Use this when the backend has already told us the session is invalid.
+class ForceLogoutEvent extends AuthEvent {}
+
 class GoogleLoginEvent extends AuthEvent {
   final String idToken;
 
