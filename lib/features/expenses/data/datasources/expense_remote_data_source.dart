@@ -65,11 +65,21 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
       }
       throw ServerException(response.data['message'] ?? 'Failed to create expense');
     } on DioException catch (e) {
-      final message = (e.response?.data is Map ? e.response?.data['message'] : null) ??
-          e.message ??
-          'Server error';
+      final responseData = e.response?.data;
+      final message = (responseData is Map ? responseData['message'] : null) ?? e.message ?? 'Server error';
+
+      // ── FIXED LIMITS: Handle 429 limit exceeded ──
+      if (e.response?.statusCode == 429) {
+        final code = (responseData is Map ? responseData['code'] as String? : null) ?? 'LIMIT_EXCEEDED';
+        final usage = (responseData is Map ? responseData['data'] as Map<String, dynamic>? : null);
+        throw LimitExceededException(message, code: code, usage: usage);
+      }
+
       if (e.response?.statusCode == 409) {
-        throw ServerException('Duplicate expense: $message');
+        // Backend now returns friendly message + existing_expense data
+        final existing = (responseData is Map ? responseData['data'] as Map<String, dynamic>? : null);
+        final existingExpense = existing?['existing_expense'] as Map<String, dynamic>?;
+        throw DuplicateException(message, existingExpense: existingExpense);
       }
       throw ServerException(message);
     }
@@ -85,9 +95,16 @@ class ExpenseRemoteDataSourceImpl implements ExpenseRemoteDataSource {
       }
       throw ServerException(response.data['message'] ?? 'Failed to update expense');
     } on DioException catch (e) {
-      throw ServerException(
-        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
-      );
+      final responseData = e.response?.data;
+      final message = (responseData is Map ? responseData['message'] : null) ?? e.message ?? 'Server error';
+
+      if (e.response?.statusCode == 429) {
+        final code = (responseData is Map ? responseData['code'] as String? : null) ?? 'LIMIT_EXCEEDED';
+        final usage = (responseData is Map ? responseData['data'] as Map<String, dynamic>? : null);
+        throw LimitExceededException(message, code: code, usage: usage);
+      }
+
+      throw ServerException(message);
     }
   }
 

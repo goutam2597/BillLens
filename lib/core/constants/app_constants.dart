@@ -75,9 +75,16 @@ class AppConstants {
     {'code': 'SGD', 'symbol': 'S\$', 'name': 'Singapore Dollar'},
   ];
 
-  // Free Plan Limits
+  // Free Plan Limits — FIXED, cannot be overridden. Backend is source of truth.
+  // These are UX-only mirrors of backend hardcoded constants.
   static const int freeMonthlyScans = 10;
-  static const int freeExpensesLimit = 50;
+  static const int freeExpensesLimit = 20; // legacy name, kept for backward compat — now means manual per month
+  static const int freeManualExpensesLimit = 20;
+  static const int freeMonthlyManualLimit = 20;
+
+  // Premium Plan Limits — FIXED, manual unlimited (no AI), scans 300/month
+  static const int premiumMonthlyScans = 300;
+  static const int premiumManualLimit = 999999; // effectively unlimited
 
   // Image
   static const int maxImageSizeMb = 10;

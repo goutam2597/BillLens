@@ -1,8 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/expense.dart';
-import 'package:billlens/core/di/injection.dart';
-import 'package:billlens/core/local/local_storage_service.dart';
+import 'package:billlens/core/local/currency_service.dart';
 
 class ExpenseFormState extends Equatable {
   final Expense expense;
@@ -10,6 +9,13 @@ class ExpenseFormState extends Equatable {
   final bool isValid;
   final String? errorMessage;
   final bool isSuccess;
+  // ── FIXED LIMITS ──
+  final bool isLimitExceeded;
+  final String? limitCode; // SCAN_LIMIT_EXCEEDED / MANUAL_LIMIT_EXCEEDED
+  final Map<String, dynamic>? limitUsage;
+  // ── DUPLICATE HANDLING ──
+  final bool isDuplicate;
+  final Map<String, dynamic>? duplicateExpense;
 
   const ExpenseFormState({
     required this.expense,
@@ -17,6 +23,11 @@ class ExpenseFormState extends Equatable {
     this.isValid = false,
     this.errorMessage,
     this.isSuccess = false,
+    this.isLimitExceeded = false,
+    this.limitCode,
+    this.limitUsage,
+    this.isDuplicate = false,
+    this.duplicateExpense,
   });
 
   ExpenseFormState copyWith({
@@ -25,6 +36,11 @@ class ExpenseFormState extends Equatable {
     bool? isValid,
     String? errorMessage,
     bool? isSuccess,
+    bool? isLimitExceeded,
+    String? limitCode,
+    Map<String, dynamic>? limitUsage,
+    bool? isDuplicate,
+    Map<String, dynamic>? duplicateExpense,
   }) {
     return ExpenseFormState(
       expense: expense ?? this.expense,
@@ -32,6 +48,11 @@ class ExpenseFormState extends Equatable {
       isValid: isValid ?? this.isValid,
       errorMessage: errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
+      isLimitExceeded: isLimitExceeded ?? this.isLimitExceeded,
+      limitCode: limitCode ?? this.limitCode,
+      limitUsage: limitUsage ?? this.limitUsage,
+      isDuplicate: isDuplicate ?? this.isDuplicate,
+      duplicateExpense: duplicateExpense ?? this.duplicateExpense,
     );
   }
 
@@ -42,17 +63,17 @@ class ExpenseFormState extends Equatable {
         isValid,
         errorMessage,
         isSuccess,
+        isLimitExceeded,
+        limitCode,
+        limitUsage,
+        isDuplicate,
+        duplicateExpense,
       ];
 }
 
 Expense _emptyExpense() {
   final now = DateTime.now();
-  String currency = 'USD';
-  try {
-    if (getIt.isRegistered<LocalStorageService>()) {
-      currency = getIt<LocalStorageService>().currency;
-    }
-  } catch (_) {}
+  final currency = CurrencyService.resolveSync();
   return Expense(
     id: '',
     userId: '',

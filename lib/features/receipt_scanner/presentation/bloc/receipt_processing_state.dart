@@ -12,7 +12,7 @@ class ProcessingInitial extends ReceiptProcessingState {
 
 /// Currently executing step with real progress.
 class ProcessingStep extends ReceiptProcessingState {
-  final int stepIndex;  // 1-based
+  final int stepIndex; // 1-based
   final int totalSteps;
   final String label;
 
@@ -114,4 +114,28 @@ class ProcessingError extends ReceiptProcessingState {
   const ProcessingError(this.message);
   @override
   List<Object> get props => [message];
+}
+
+/// FIXED LIMITS: Emitted when free user hits scan limit
+class ProcessingLimitExceeded extends ReceiptProcessingState {
+  final String message;
+  final String code; // SCAN_LIMIT_EXCEEDED
+  final int used;
+  final int limit;
+  final String resetsAt;
+  final Map<String, dynamic>? usage;
+
+  const ProcessingLimitExceeded({
+    required this.message,
+    required this.code,
+    required this.used,
+    required this.limit,
+    required this.resetsAt,
+    this.usage,
+  });
+
+  int get remaining => 0;
+
+  @override
+  List<Object?> get props => [message, code, used, limit, resetsAt, usage];
 }

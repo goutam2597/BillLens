@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:dio/dio.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
@@ -12,6 +13,9 @@ import '../../../auth/domain/entities/user_entity.dart';
 import 'package:billlens/core/di/injection.dart';
 import '../../../../core/local/local_storage_service.dart';
 import '../../../auth/data/repositories/user_repository.dart';
+import '../bloc/profile_bloc.dart';
+import '../bloc/profile_event.dart';
+import '../bloc/profile_state.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -21,6 +25,28 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final TextEditingController _reasonController = TextEditingController();
+  bool _understandChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AuthBloc>().add(CheckAuthStatus());
+        try {
+          context.read<ProfileBloc>().add(LoadDeletionStatus());
+        } catch (_) {}
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -112,88 +138,250 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _showDeleteDialog() {
+  void _showDeleteDialog({Map<String, dynamic>? existingRequest}) {
+    final hasPending =
+        existingRequest != null && existingRequest['has_request'] == true;
+    final request =
+        hasPending ? existingRequest['request'] as Map<String, dynamic>? : null;
+    final daysRemaining =
+        request?['days_remaining'] ?? existingRequest?['days_remaining'] ?? 30;
+    final scheduled = request?['scheduled_deletion_at'] ??
+        existingRequest?['scheduled_deletion_at'] ??
+        '';
+    final requestedAt =
+        request?['requested_at'] ?? existingRequest?['requested_at'] ?? '';
+
+    _reasonController.clear();
+    _understandChecked = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: Theme.of(ctx).colorScheme.surface,
-        elevation: 0,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.delete_outline_rounded,
-                    color: AppColors.error, size: 32),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Delete Account',
-                style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(ctx).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This action is irreversible. All your data, expenses, and receipts will be permanently deleted.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Row(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Theme.of(ctx).colorScheme.surface,
+          elevation: 0,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(
-                            color: Theme.of(ctx).colorScheme.outlineVariant),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.outfit(
-                          color: Theme.of(ctx).colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              (hasPending ? AppColors.warning : AppColors.error)
+                                  .withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          hasPending
+                              ? Icons.hourglass_top_rounded
+                              : Icons.delete_forever_rounded,
+                          color:
+                              hasPending ? AppColors.warning : AppColors.error,
+                          size: 28,
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              hasPending
+                                  ? 'Delete Requested'
+                                  : 'Delete Account?',
+                              style: GoogleFonts.outfit(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(ctx).colorScheme.onSurface),
+                            ),
+                            if (hasPending)
+                              Text('$daysRemaining days remaining',
+                                  style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      color: AppColors.warning,
+                                      fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: AppColors.error,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
+                  const SizedBox(height: 16),
+                  if (hasPending) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Icon(Icons.info_outline_rounded,
+                                size: 16, color: AppColors.warning),
+                            const SizedBox(width: 6),
+                            Text('Request Pending',
+                                style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.warning))
+                          ]),
+                          const SizedBox(height: 8),
+                          Text(
+                              'Requested: ${requestedAt.toString().substring(0, 19)}',
+                              style: GoogleFonts.outfit(
+                                  fontSize: 12, color: Colors.black87)),
+                          const SizedBox(height: 4),
+                          Text(
+                              'Scheduled deletion: ${scheduled.toString().substring(0, 10)}',
+                              style: GoogleFonts.outfit(
+                                  fontSize: 12, color: Colors.black87)),
+                          const SizedBox(height: 4),
+                          Text(
+                              'Auto-deletion in $daysRemaining days if admin takes no action. Admin will review your account status, dues, etc.',
+                              style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  color: Colors.grey[700],
+                                  height: 1.3)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                        'Your account is currently marked for deletion. You can cancel the request to keep your account active.',
+                        style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                            height: 1.4)),
+                  ] else ...[
+                    Text(
+                      'This will not delete your account instantly. Instead, it will send a deletion request to admin. Admin will check your account status, dues, and other details. If everything is ok, admin will delete manually. If admin takes no action within 30 days, your account will be automatically deleted.',
+                      style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                          height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _reasonController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Reason for deletion (optional)',
+                        hintText: 'Why are you leaving?',
+                        border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(
-                        'Delete',
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                        filled: true,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(
+                          value: _understandChecked,
+                          onChanged: (v) => setDialogState(
+                              () => _understandChecked = v ?? false),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'I understand that my data, expenses, and receipts will be permanently deleted after admin approval or after 30 days auto-deletion.',
+                            style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: Colors.black87,
+                                height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(
+                                color:
+                                    Theme.of(ctx).colorScheme.outlineVariant),
+                          ),
+                          child: Text('Cancel',
+                              style: GoogleFonts.outfit(
+                                  color: Theme.of(ctx).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: hasPending
+                              ? () {
+                                  Navigator.of(ctx).pop();
+                                  context
+                                      .read<ProfileBloc>()
+                                      .add(CancelDeleteRequest());
+                                }
+                              : (_understandChecked
+                                  ? () {
+                                      final reason =
+                                          _reasonController.text.trim();
+                                      Navigator.of(ctx).pop();
+                                      context.read<ProfileBloc>().add(
+                                          RequestDeleteAccount(
+                                              reason: reason.isEmpty
+                                                  ? null
+                                                  : reason));
+                                    }
+                                  : null),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: hasPending
+                                ? AppColors.primary
+                                : AppColors.error,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text(
+                              hasPending
+                                  ? 'Cancel Request'
+                                  : 'Request Deletion',
+                              style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
                   ),
+                  if (!hasPending) ...[
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Text(
+                        'Admin will review within 30 days. Auto-deletion after 30 days if no action.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -201,24 +389,92 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showCurrencySelector(UserEntity? user) {
+    // Single source of truth: server user currency > local storage
+    final current = user?.currency.isNotEmpty == true
+        ? user!.currency
+        : getIt<LocalStorageService>().currency;
     showDialog(
       context: context,
       builder: (ctx) => _CurrencyPickerDialog(
-        currentCurrency: user?.currency ?? 'USD',
+        currentCurrency: current,
         onCurrencySelected: (code) async {
-          try {
-            final storage = getIt<LocalStorageService>();
-            await storage.setCurrency(code);
+          if (code == current) return;
+          // Show loading
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Updating currency to $code...'),
+                ]),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
 
+          try {
             if (user != null) {
               final repo = getIt<UserRepository>();
-              await repo.updateProfile(userId: user.id, currency: code);
+              final result = await repo.updateProfile(userId: user.id, currency: code);
+              result.fold(
+                (failure) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to update currency: ${failure.message}'),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
+                },
+                (updatedUser) async {
+                  // Success — AuthRepository already synced local prefs via updateProfile.
+                  // Force refresh AuthBloc to rebuild all listeners with new currency.
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Currency changed to $code (${updatedUser.currency})'),
+                        backgroundColor: AppColors.accent,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                    context.read<AuthBloc>().add(CheckAuthStatus());
+                    // Also reload profile to reflect new currency immediately
+                    context.read<ProfileBloc>().add(LoadProfile());
+                  }
+                },
+              );
+            } else {
+              // No user (offline) — save locally only, will sync on next login
+              final storage = getIt<LocalStorageService>();
+              await storage.setCurrency(code);
               if (mounted) {
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Currency saved locally as $code. Will sync on login.'),
+                    backgroundColor: AppColors.warning,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                // Reload auth to propagate
                 context.read<AuthBloc>().add(CheckAuthStatus());
               }
             }
           } catch (e) {
             if (mounted) {
+              ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Failed to update currency: ${e.toString()}'),
@@ -239,41 +495,225 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is Unauthenticated) {
-          context.go(AppRoutes.login);
-        } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is Unauthenticated) {
+              context.go(AppRoutes.login);
+            } else if (state is AuthError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: AppColors.error),
+              );
+            }
+          },
+        ),
+        BlocListener<ProfileBloc, ProfileState>(
+          listener: (context, state) {
+            if (state is DeletionRequested) {
+              final scheduled = state.data['scheduled_deletion_at'] ?? '';
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      'Delete request sent. Scheduled deletion: ${scheduled.toString().substring(0, 10)} (30 days). Admin will review.'),
+                  backgroundColor: AppColors.warning,
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            } else if (state is DeletionCancelled) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text(
+                        'Deletion request cancelled. Account is now active.'),
+                    backgroundColor: AppColors.accent,
+                    behavior: SnackBarBehavior.floating),
+              );
+            } else if (state is DeletionError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating),
+              );
+            } else if (state is ProfileError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: AppColors.error),
+              );
+            }
+          },
+        ),
+      ],
       child: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          final user = state is Authenticated ? state.user : null;
-          final isPremium = user?.isPremium ?? false;
+        builder: (context, authState) {
+          final user = authState is Authenticated ? authState.user : null;
+          return FutureBuilder<bool>(
+            future: () async {
+              try {
+                final dio = getIt<Dio>(instanceName: 'dio');
+                final resp = await dio.get('/api/subscription/usage');
+                if (resp.statusCode == 200) {
+                  final data = resp.data['data'] as Map<String, dynamic>?;
+                  if (data != null) {
+                    return data['is_premium'] as bool? ?? false;
+                  }
+                }
+              } catch (_) {}
+              return user?.isPremium ?? false;
+            }(),
+            builder: (context, snapshot) {
+              final isPremium = snapshot.data ?? (user?.isPremium ?? false);
 
-          return Scaffold(
-            backgroundColor: colorScheme.surfaceContainerLowest,
-            body: CustomScrollView(
-              slivers: [
-                const AppRootSliverBar(title: 'Profile'),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
-                    child: _buildBody(
-                      context,
-                      isPremium: isPremium,
-                      user: user,
-                    ),
+              return Scaffold(
+                backgroundColor: colorScheme.surfaceContainerLowest,
+                body: RefreshIndicator(
+                  onRefresh: () async {
+                    context.read<AuthBloc>().add(CheckAuthStatus());
+                    context.read<ProfileBloc>().add(LoadProfile());
+                    context.read<ProfileBloc>().add(LoadDeletionStatus());
+                    await Future.delayed(const Duration(milliseconds: 600));
+                  },
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      const AppRootSliverBar(title: 'Profile'),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+                          child: Column(
+                            children: [
+                              _buildBody(context,
+                                  isPremium: isPremium, user: user),
+                              const SizedBox(height: 16),
+                              BlocBuilder<ProfileBloc, ProfileState>(
+                                builder: (context, profileState) {
+                                  Map<String, dynamic>? deletionData;
+                                  if (profileState is ProfileLoaded) {
+                                    deletionData = profileState.deletionStatus;
+                                  } else if (profileState
+                                      is DeletionStatusLoaded) {
+                                    deletionData = profileState.data;
+                                  } else if (profileState
+                                      is DeletionRequested) {
+                                    deletionData = profileState.data;
+                                  }
+
+                                  final hasPending = deletionData != null &&
+                                      deletionData['has_request'] == true;
+                                  if (!hasPending) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  final request = deletionData['request']
+                                      as Map<String, dynamic>?;
+                                  final daysRemaining =
+                                      request?['days_remaining'] ??
+                                          deletionData['days_remaining'] ??
+                                          30;
+                                  final scheduled = request?[
+                                          'scheduled_deletion_at'] ??
+                                      deletionData['scheduled_deletion_at'] ??
+                                      '';
+
+                                  return Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.warning
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: AppColors.warning
+                                              .withValues(alpha: 0.3)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(Icons.warning_amber_rounded,
+                                                size: 18,
+                                                color: AppColors.warning),
+                                            const SizedBox(width: 8),
+                                            Text('Delete Requested',
+                                                style: GoogleFonts.outfit(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppColors.warning)),
+                                            const Spacer(),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                              decoration: BoxDecoration(
+                                                  color: AppColors.error
+                                                      .withValues(alpha: 0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6)),
+                                              child: Text(
+                                                  '${daysRemaining}d left',
+                                                  style: GoogleFonts.outfit(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: AppColors.error)),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                            'Scheduled deletion: ${scheduled.toString().substring(0, 10)}',
+                                            style: GoogleFonts.outfit(
+                                                fontSize: 12,
+                                                color: Colors.black87)),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                            'Admin will review. Auto-deletion in $daysRemaining days if no action.',
+                                            style: GoogleFonts.outfit(
+                                                fontSize: 11,
+                                                color: Colors.grey[700])),
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: OutlinedButton(
+                                            onPressed: () => context
+                                                .read<ProfileBloc>()
+                                                .add(CancelDeleteRequest()),
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                  color: AppColors.warning),
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8)),
+                                            ),
+                                            child: Text(
+                                                'Cancel Deletion Request',
+                                                style: GoogleFonts.outfit(
+                                                    color: AppColors.warning,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 12)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
@@ -316,7 +756,7 @@ class _ProfilePageState extends State<ProfilePage> {
               context: context,
               icon: Icons.attach_money,
               title: 'Currency',
-              trailing: getIt<LocalStorageService>().currency,
+              trailing: (user?.currency.isNotEmpty == true ? user!.currency : getIt<LocalStorageService>().currency),
               iconColor: const Color(0xFF10B981),
               onTap: () => _showCurrencySelector(user),
             ),

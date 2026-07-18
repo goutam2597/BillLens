@@ -8,6 +8,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/utils/app_utils.dart';
+import 'package:billlens/core/local/currency_service.dart';
+import 'package:billlens/core/di/injection.dart';
+import 'package:dio/dio.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../expenses/domain/entities/expense.dart';
@@ -16,6 +19,7 @@ import '../bloc/dashboard_event.dart';
 import '../bloc/dashboard_state.dart';
 import '../../../expenses/presentation/helpers/expense_ui_helper.dart'
     show categoryMeta;
+import '../../../expenses/data/datasources/expense_local_data_source.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -100,17 +104,19 @@ class _DashboardPageState extends State<DashboardPage>
                         const SizedBox(height: 12),
                         _buildAnimatedSlideUp(
                             _buildMonthlySummaryCard(state), 1),
+                        const SizedBox(height: 16),
+                        _buildAnimatedSlideUp(_buildUsageBanner(context), 2),
                         const SizedBox(height: 20),
-                        _buildAnimatedSlideUp(_buildQuickActions(context), 2),
+                        _buildAnimatedSlideUp(_buildQuickActions(context), 3),
                         const SizedBox(height: 28),
                         _buildAnimatedSlideUp(
                             _buildRecentExpensesHeader(context, textPrimary),
-                            3),
+                            4),
                         const SizedBox(height: 8),
                         if (state is DashboardLoaded) ...[
                           if (state.recentExpenses.isEmpty)
                             _buildAnimatedSlideUp(
-                                _buildEmptyState(textSecondary), 4)
+                                _buildEmptyState(textSecondary), 5)
                           else
                             ...state.recentExpenses.asMap().entries.map(
                                   (entry) => _buildAnimatedSlideUp(
@@ -127,7 +133,7 @@ class _DashboardPageState extends State<DashboardPage>
                                             '/expenses/${entry.value.id}'),
                                       ),
                                     ),
-                                    4 + entry.key,
+                                    5 + entry.key,
                                   ),
                                 ),
                         ] else if (state is DashboardLoading)
@@ -135,10 +141,10 @@ class _DashboardPageState extends State<DashboardPage>
                               3,
                               (index) => _buildAnimatedSlideUp(
                                   _buildSkeletonCard(surfaceColor, borderColor),
-                                  4 + index)),
+                                  5 + index)),
                         const SizedBox(height: 24),
                         _buildAnimatedSlideUp(
-                            _buildAdBanner(isDark, textSecondary), 9),
+                            _buildAdBanner(isDark, textSecondary), 10),
                         const SizedBox(height: 150),
                       ],
                     ),
@@ -289,13 +295,16 @@ class _DashboardPageState extends State<DashboardPage>
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  AppUtils.formatCurrency(total),
-                  style: GoogleFonts.outfit(
-                    fontSize: 38,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                ValueListenableBuilder<String>(
+                  valueListenable: CurrencyService.notifier,
+                  builder: (context, cur, _) => Text(
+                    AppUtils.formatCurrency(total, currency: cur),
+                    style: GoogleFonts.outfit(
+                      fontSize: 38,
+                      height: 1,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -308,11 +317,14 @@ class _DashboardPageState extends State<DashboardPage>
                       color: Colors.white,
                     ),
                     const SizedBox(width: 24),
-                    _SummaryStat(
-                      icon: Icons.analytics_rounded,
-                      value: AppUtils.formatCurrency(average),
-                      label: 'avg',
-                      color: Colors.white,
+                    ValueListenableBuilder<String>(
+                      valueListenable: CurrencyService.notifier,
+                      builder: (context, cur, _) => _SummaryStat(
+                        icon: Icons.analytics_rounded,
+                        value: AppUtils.formatCurrency(average, currency: cur),
+                        label: 'avg',
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
@@ -384,6 +396,240 @@ class _DashboardPageState extends State<DashboardPage>
           ),
         ),
       ],
+    );
+  }
+
+
+  Widget _buildUsageBanner(BuildContext context) {
+    // Fetch backend usage (source of truth) + local pending, show max to prevent bypass
+    // Premium: 300 scans/month fixed, manual unlimited (no AI)
+    // Free: 10 scans + 20 manual fixed
+    return FutureBuilder<Map<String, dynamic>>(
+      future: () async {
+        int backendScans = 0;
+        int backendManual = 0;
+        bool isPremium = false;
+        String resetsAt = '';
+        int scansLimit = 10;
+        int manualLimit = 20;
+        // 1. Try backend
+        try {
+          final dio = getIt<Dio>(instanceName: 'dio');
+          final resp = await dio.get('/api/subscription/usage');
+          if (resp.statusCode == 200) {
+            final data = resp.data['data'] as Map<String, dynamic>?;
+            if (data != null) {
+              isPremium = data['is_premium'] as bool? ?? false;
+              backendScans = (data['scans']?['used'] as int?) ?? (data['scans_used'] as int? ?? 0);
+              backendManual = (data['manual_expenses']?['used'] as int?) ?? (data['manual_used'] as int? ?? 0);
+              scansLimit = (data['scans']?['limit'] as int?) ?? (data['scans_limit'] as int? ?? (isPremium ? 300 : 10));
+              manualLimit = (data['manual_expenses']?['limit'] as int?) ?? (data['manual_limit'] as int? ?? (isPremium ? 999999 : 20));
+              resetsAt = data['resets_at'] as String? ?? '';
+            }
+          }
+        } catch (_) {}
+        // 2. Get local counts (includes pending not yet synced)
+        int localScans = 0;
+        int localManual = 0;
+        try {
+          final local = getIt<ExpenseLocalDataSource>();
+          final usage = await local.getMonthlyUsage();
+          localScans = usage['scanned'] ?? 0;
+          localManual = usage['manual'] ?? 0;
+        } catch (_) {}
+        // 3. Take max to prevent bypass via offline
+        final scansUsed = backendScans > localScans ? backendScans : localScans;
+        final manualUsed = backendManual > localManual ? backendManual : localManual;
+        // For premium, manual is unlimited, but we still track used for info
+        final effectiveManualLimit = isPremium ? 999999 : manualLimit;
+        final effectiveScansLimit = isPremium ? 300 : scansLimit;
+        return {
+          'is_premium': isPremium,
+          'scans_used': scansUsed,
+          'manual_used': manualUsed,
+          'scans_limit': effectiveScansLimit,
+          'manual_limit': effectiveManualLimit,
+          'scans': {'used': scansUsed, 'limit': effectiveScansLimit, 'remaining': (effectiveScansLimit - scansUsed).clamp(0, effectiveScansLimit)},
+          'manual_expenses': {'used': manualUsed, 'limit': effectiveManualLimit, 'remaining': isPremium ? 999999 : (effectiveManualLimit - manualUsed).clamp(0, effectiveManualLimit)},
+          'resets_at': resetsAt.isNotEmpty ? resetsAt : DateTime(DateTime.now().year, DateTime.now().month + 1, 1).toIso8601String(),
+        };
+      }(),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        if (data == null) {
+          // Loading — show placeholder
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 10),
+                Text('Loading usage...', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[600])),
+              ],
+            ),
+          );
+        }
+        final isPremiumBanner = data['is_premium'] == true;
+
+        final scansUsed = (data['scans']?['used'] as int?) ?? (data['scans_used'] as int? ?? 0);
+        final manualUsed = (data['manual_expenses']?['used'] as int?) ?? (data['manual_used'] as int? ?? 0);
+        final scansLimit = (data['scans']?['limit'] as int?) ?? (data['scans_limit'] as int? ?? 10);
+        final manualLimit = (data['manual_expenses']?['limit'] as int?) ?? (data['manual_limit'] as int? ?? 20);
+        final scansRemaining = (data['scans']?['remaining'] as int?) ?? (scansLimit - scansUsed).clamp(0, scansLimit);
+        final manualRemaining = (data['manual_expenses']?['remaining'] as int?) ?? (manualLimit - manualUsed).clamp(0, manualLimit);
+        final resetsAt = data['resets_at'] as String? ?? '';
+        final isNearLimit = manualUsed >= (manualLimit * 0.8) || scansUsed >= (scansLimit * 0.8);
+        final isExhausted = manualRemaining == 0 || scansRemaining == 0;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isExhausted ? AppColors.error.withValues(alpha: 0.3) : (isNearLimit ? AppColors.warning.withValues(alpha: 0.3) : const Color(0xFFE2E8F0))),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isPremiumBanner
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(5)),
+                    child: Text(
+                      isPremiumBanner ? 'PREMIUM — FIXED LIMITS' : 'FREE — FIXED LIMITS',
+                      style: GoogleFonts.outfit(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: isPremiumBanner ? AppColors.primary : AppColors.warning,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (isExhausted)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(5)),
+                      child: Text('LIMIT REACHED', style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.error)),
+                    ),
+                  if (resetsAt.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text('Resets: ${resetsAt.substring(0, 10)}', style: GoogleFonts.outfit(fontSize: 9, color: Colors.grey[600])),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.document_scanner_rounded, size: 14, color: scansUsed >= scansLimit ? AppColors.error : AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text('Scans: $scansUsed/$scansLimit', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 4),
+                  Text('• $scansRemaining left', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[600])),
+                  const Spacer(),
+                  Icon(Icons.edit_note_rounded, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  if (isPremiumBanner || manualLimit >= 999999)
+                    Text('Manual: Unlimited', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary))
+                  else ...[
+                    Text('Manual: $manualUsed/$manualLimit', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 4),
+                    Text('• $manualRemaining left', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[600])),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: (scansUsed / scansLimit).clamp(0.0, 1.0),
+                        minHeight: 4,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        valueColor: AlwaysStoppedAnimation(scansUsed >= scansLimit ? AppColors.error : AppColors.primary),
+                      ),
+                    ),
+                  ),
+                  if (!(isPremiumBanner || manualLimit >= 999999)) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: (manualUsed / manualLimit).clamp(0.0, 1.0),
+                          minHeight: 4,
+                          backgroundColor: const Color(0xFFE2E8F0),
+                          valueColor: AlwaysStoppedAnimation(manualUsed >= manualLimit ? AppColors.error : AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (!isPremiumBanner && (isExhausted || isNearLimit)) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => context.push(AppRoutes.subscription),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: Text(
+                      isExhausted ? 'Limit Reached — Upgrade to Premium' : 'Upgrade to Premium — 300 scans + Unlimited manual',
+                      style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+              if (isPremiumBanner && isExhausted) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 16, color: AppColors.warning),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Premium limit reached (300 scans/month). Resets on ${resetsAt.isNotEmpty ? resetsAt.substring(0, 10) : 'next month'}. Manual entries unlimited (no AI).',
+                          style: GoogleFonts.outfit(fontSize: 11, color: Colors.black87, height: 1.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 

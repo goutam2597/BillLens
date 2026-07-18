@@ -7,6 +7,9 @@ import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
+import '../models/user_model.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/local/local_storage_service.dart';
 
 @LazySingleton(as: AuthRepository)
 class AuthRepositoryImpl implements AuthRepository {
@@ -17,6 +20,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required this.remoteDataSource,
     required this.localDataSource,
   });
+
+  Future<void> _syncCurrencyToPrefs(String currency) async {
+    try {
+      if (getIt.isRegistered<LocalStorageService>()) {
+        await getIt<LocalStorageService>().syncCurrencyFromServer(currency);
+      }
+    } catch (_) {}
+  }
 
   @override
   Future<Either<Failure, UserEntity>> login({
@@ -29,6 +40,7 @@ class AuthRepositoryImpl implements AuthRepository {
         await localDataSource.cacheToken(userModel.token!);
       }
       await localDataSource.cacheUser(userModel);
+      await _syncCurrencyToPrefs(userModel.currency);
       return Right(userModel);
     } on AuthenticationException catch (e) {
       return Left(AuthenticationFailure(e.message));
@@ -59,6 +71,7 @@ class AuthRepositoryImpl implements AuthRepository {
         await localDataSource.cacheToken(userModel.token!);
       }
       await localDataSource.cacheUser(userModel);
+      await _syncCurrencyToPrefs(userModel.currency);
       return Right(userModel);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -92,6 +105,7 @@ class AuthRepositoryImpl implements AuthRepository {
         await localDataSource.cacheToken(userModel.token!);
       }
       await localDataSource.cacheUser(userModel);
+      await _syncCurrencyToPrefs(userModel.currency);
       return Right(userModel);
     } on AuthenticationException catch (e) {
       return Left(AuthenticationFailure(e.message));
@@ -106,7 +120,42 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, UserEntity?>> getCurrentUser() async {
     try {
       final cachedUser = await localDataSource.getCachedUser();
-      return Right(cachedUser);
+      // Try to refresh from backend to get correct subscription_status (fixes stale premium cache)
+      try {
+        final freshUser = await remoteDataSource.getProfile();
+        // Preserve token from cached user if fresh doesn't have it
+        final token = cachedUser?.token ?? freshUser.token;
+        final userToCache = UserModel(
+          id: freshUser.id,
+          name: freshUser.name,
+          firstName: freshUser.firstName,
+          lastName: freshUser.lastName,
+          email: freshUser.email,
+          phone: freshUser.phone,
+          businessName: freshUser.businessName,
+          address: freshUser.address,
+          city: freshUser.city,
+          state: freshUser.state,
+          zip: freshUser.zip,
+          avatarUrl: freshUser.avatarUrl,
+          currency: freshUser.currency,
+          token: token,
+          subscriptionStatus: freshUser.subscriptionStatus,
+          subscriptionExpiry: freshUser.subscriptionExpiry,
+          createdAt: freshUser.createdAt,
+          updatedAt: freshUser.updatedAt,
+          hasPassword: freshUser.hasPassword,
+        );
+        await localDataSource.cacheUser(userToCache);
+        await _syncCurrencyToPrefs(userToCache.currency);
+        return Right(userToCache);
+      } catch (_) {
+        // If backend fetch fails (offline), return cached and sync its currency to prefs
+        if (cachedUser != null) {
+          await _syncCurrencyToPrefs(cachedUser.currency);
+        }
+        return Right(cachedUser);
+      }
     } catch (e) {
       return Left(CacheFailure(e.toString()));
     }

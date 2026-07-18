@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:injectable/injectable.dart';
 
@@ -7,7 +8,11 @@ import 'package:injectable/injectable.dart';
 class LocalStorageService {
   final SharedPreferences _prefs;
 
-  LocalStorageService(this._prefs);
+  LocalStorageService(this._prefs) {
+    // Initialize notifier with persisted value so that first listeners get correct currency
+    final initial = _prefs.getString(_currency) ?? 'USD';
+    _currencyNotifier.value = initial;
+  }
 
   // ── Keys ──────────────────────────────────────────────────────────────────
   static const _onboardingComplete = 'onboarding_complete';
@@ -15,6 +20,12 @@ class LocalStorageService {
   static const _currency = 'currency';
   static const _notificationsEnabled = 'notifications_enabled';
   static const _biometricEnabled = 'biometric_enabled';
+
+  // Reactive notifier for currency changes — single source of truth for UI that
+  // relies on SharedPreferences. All currency writes must go through setCurrency.
+  static final ValueNotifier<String> _currencyNotifier =
+      ValueNotifier<String>('USD');
+  static ValueNotifier<String> get currencyNotifier => _currencyNotifier;
 
   // ── Onboarding ────────────────────────────────────────────────────────────
 
@@ -34,10 +45,22 @@ class LocalStorageService {
 
   // ── Currency ──────────────────────────────────────────────────────────────
 
-  String get currency => _prefs.getString(_currency) ?? 'USD';
+  String get currency => _prefs.getString(_currency) ?? _currencyNotifier.value;
 
   Future<void> setCurrency(String currency) async {
-    await _prefs.setString(_currency, currency);
+    final code = currency.toUpperCase().trim();
+    if (code.isEmpty) return;
+    await _prefs.setString(_currency, code);
+    _currencyNotifier.value = code;
+  }
+
+  /// Sync without triggering extra persistence races — used internally when server is SOT
+  Future<void> syncCurrencyFromServer(String currencyCode) async {
+    final code = currencyCode.toUpperCase().trim();
+    if (code.isEmpty) return;
+    if (_prefs.getString(_currency) == code && _currencyNotifier.value == code) return;
+    await _prefs.setString(_currency, code);
+    _currencyNotifier.value = code;
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────

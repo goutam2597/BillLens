@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:billlens/core/di/injection.dart';
 import 'package:billlens/core/local/local_storage_service.dart';
+import 'package:billlens/core/local/currency_service.dart';
 
 class AppUtils {
   /// Build a full URL for a receipt image stored on the backend.
@@ -34,13 +35,17 @@ class AppUtils {
     return remoteUrl;
   }
 
-  /// Format currency amount
+  /// Format currency amount — unified resolver: explicit > CurrencyService > LocalStorage > USD
+  /// This prevents BDT/USD desync across screens
   static String formatCurrency(double amount, {String? currency, int decimals = 2}) {
-    String currencyCode = currency ?? '';
+    String currencyCode = CurrencyService.resolveSync(currency);
     if (currencyCode.isEmpty) {
       try {
         if (getIt.isRegistered<LocalStorageService>()) {
           currencyCode = getIt<LocalStorageService>().currency;
+        }
+        if (currencyCode.isEmpty && getIt.isRegistered<CurrencyService>()) {
+          currencyCode = CurrencyService.current;
         }
       } catch (_) {}
       if (currencyCode.isEmpty) currencyCode = 'USD';

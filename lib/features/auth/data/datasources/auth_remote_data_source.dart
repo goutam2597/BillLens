@@ -18,6 +18,7 @@ abstract class AuthRemoteDataSource {
   Future<void> verifyOtp({required String email, required String code});
   Future<void> resendOtp({required String email});
   Future<void> resetPassword({required String email});
+  Future<UserModel> getProfile();
 }
 
 @LazySingleton(as: AuthRemoteDataSource)
@@ -161,6 +162,24 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await _dio.post('/api/reset-password', data: {'email': email});
     } on DioException catch (e) {
       throw ServerException(e.message ?? 'Password reset failed');
+    }
+  }
+
+  @override
+  Future<UserModel> getProfile() async {
+    try {
+      final response = await _dio.get('/api/profile');
+      if (response.statusCode == 200) {
+        final data = response.data['data'] as Map<String, dynamic>?;
+        if (data != null) {
+          return UserModel.fromJson(data);
+        }
+      }
+      throw ServerException('Failed to fetch profile');
+    } on DioException catch (e) {
+      throw ServerException(
+        (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message ?? 'Server error',
+      );
     }
   }
 }

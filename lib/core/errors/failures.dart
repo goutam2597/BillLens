@@ -26,5 +26,26 @@ class AuthenticationFailure extends Failure {
 }
 
 class DuplicateFailure extends Failure {
-  const DuplicateFailure(super.message);
+  final Map<String, dynamic>? existingExpense;
+  const DuplicateFailure(super.message, {this.existingExpense});
+
+  @override
+  List<Object> get props => [message, if (existingExpense != null) existingExpense!];
+}
+
+class LimitExceededFailure extends Failure {
+  final String code; // SCAN_LIMIT_EXCEEDED or MANUAL_LIMIT_EXCEEDED
+  final Map<String, dynamic>? usage;
+
+  const LimitExceededFailure(
+    super.message, {
+    required this.code,
+    this.usage,
+  });
+
+  bool get isScanLimit => code == 'SCAN_LIMIT_EXCEEDED';
+  bool get isManualLimit => code == 'MANUAL_LIMIT_EXCEEDED';
+
+  @override
+  List<Object> get props => [message, code, if (usage != null) usage!];
 }

@@ -16,6 +16,11 @@ abstract class ExpenseLocalDataSource {
   Future<ExpenseModel> updateExpense(ExpenseModel expense);
   Future<void> deleteExpense(String id);
   Future<void> hardDeleteExpense(String id);
+
+  // ── FIXED LIMITS: Monthly counting for free tier enforcement ──
+  Future<int> getMonthlyManualCount();
+  Future<int> getMonthlyScannedCount();
+  Future<Map<String, int>> getMonthlyUsage();
 }
 
 @LazySingleton(as: ExpenseLocalDataSource)
@@ -80,6 +85,19 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
       updatedAt: data.updatedAt ?? DateTime.now(),
     );
   }
+
+  bool _isCurrentMonth(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month;
+  }
+
+  bool _isManual(Expense data) {
+    final local = data.receiptImageLocalPath;
+    final remote = data.receiptImageRemoteUrl;
+    return (local == null || local.isEmpty) && (remote == null || remote.isEmpty);
+  }
+
+  bool _isScanned(Expense data) => !_isManual(data);
 
   @override
   Future<List<ExpenseModel>> getExpenses() async {
@@ -194,5 +212,55 @@ class ExpenseLocalDataSourceImpl implements ExpenseLocalDataSource {
   @override
   Future<void> hardDeleteExpense(String id) async {
     await (_db.delete(_db.expenses)..where((tbl) => tbl.localId.equals(id))).go();
+  }
+
+  // ── FIXED LIMITS ──────────────────────────────────────────────────────
+
+  @override
+  Future<int> getMonthlyManualCount() async {
+    final query = _db.select(_db.expenses)..where((tbl) => tbl.isDeleted.equals(false));
+    final rows = await query.get();
+    return rows.where((r) {
+      final created = r.createdAt;
+      if (created == null) return false;
+      return _isCurrentMonth(created) && _isManual(r);
+    }).length;
+  }
+
+  @override
+  Future<int> getMonthlyScannedCount() async {
+    final query = _db.select(_db.expenses)..where((tbl) => tbl.isDeleted.equals(false));
+    final rows = await query.get();
+    return rows.where((r) {
+      final created = r.createdAt;
+      if (created == null) return false;
+      return _isCurrentMonth(created) && _isScanned(r);
+    }).length;
+  }
+
+  @override
+  Future<Map<String, int>> getMonthlyUsage() async {
+    final query = _db.select(_db.expenses)..where((tbl) => tbl.isDeleted.equals(false));
+    final rows = await query.get();
+
+    int manual = 0;
+    int scanned = 0;
+
+    for (final r in rows) {
+      final created = r.createdAt;
+      if (created == null) continue;
+      if (!_isCurrentMonth(created)) continue;
+      if (_isManual(r)) {
+        manual++;
+      } else {
+        scanned++;
+      }
+    }
+
+    return {
+      'manual': manual,
+      'scanned': scanned,
+      'total': manual + scanned,
+    };
   }
 }

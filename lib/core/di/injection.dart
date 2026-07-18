@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../local/local_storage_service.dart';
+import '../local/currency_service.dart';
 import '../firebase/firebase_config_service.dart';
 
 // Auth
@@ -64,6 +65,12 @@ import '../../features/subscription/presentation/bloc/subscription_bloc.dart';
 
 // Profile
 import '../../features/profile/presentation/bloc/profile_bloc.dart';
+import '../../features/profile/data/datasources/account_deletion_remote_data_source.dart';
+import '../../features/profile/domain/repositories/account_deletion_repository.dart';
+import '../../features/profile/data/repositories/account_deletion_repository_impl.dart';
+import '../../features/profile/domain/usecases/request_deletion_usecase.dart';
+import '../../features/profile/domain/usecases/get_deletion_status_usecase.dart';
+import '../../features/profile/domain/usecases/cancel_deletion_usecase.dart';
 
 // Settings
 import '../../features/settings/presentation/bloc/settings_bloc.dart';
@@ -91,6 +98,16 @@ Future<void> configureDependencies() async {
     final prefs = await SharedPreferences.getInstance();
     getIt.registerLazySingleton<LocalStorageService>(
       () => LocalStorageService(prefs),
+    );
+  }
+
+  // CurrencyService — must be after AuthLocalDataSource (registered in generated init)
+  if (!getIt.isRegistered<CurrencyService>()) {
+    getIt.registerLazySingleton<CurrencyService>(
+      () => CurrencyService(
+        getIt<LocalStorageService>(),
+        getIt<AuthLocalDataSource>(),
+      ),
     );
   }
 
@@ -163,6 +180,7 @@ Future<void> configureDependencies() async {
         localDataSource: getIt<ExpenseLocalDataSource>(),
         remoteDataSource: getIt<ExpenseRemoteDataSource>(),
         connectivityService: getIt<ConnectivityService>(),
+        authLocalDataSource: getIt<AuthLocalDataSource>(),
       ),
     );
   }
@@ -293,7 +311,11 @@ Future<void> configureDependencies() async {
     getIt.registerFactory(() => ReceiptScannerBloc());
   }
   if (!getIt.isRegistered<ReceiptProcessingBloc>()) {
-    getIt.registerFactory(() => ReceiptProcessingBloc(getIt()));
+    getIt.registerFactory(() => ReceiptProcessingBloc(
+          getIt(instanceName: 'dio'),
+          getIt<ExpenseLocalDataSource>(),
+          getIt<AuthLocalDataSource>(),
+        ));
   }
 
   // ── Analytics ─────────────────────────────────────────────────────────────
@@ -318,16 +340,52 @@ Future<void> configureDependencies() async {
   // ── Subscription ──────────────────────────────────────────────────────────
   if (!getIt.isRegistered<SubscriptionBloc>()) {
     getIt.registerFactory(
-      () => SubscriptionBloc(storage: getIt<LocalStorageService>()),
+      () => SubscriptionBloc(
+        storage: getIt<LocalStorageService>(),
+        dio: getIt(instanceName: 'dio'),
+        expenseLocalDataSource: getIt<ExpenseLocalDataSource>(),
+      ),
     );
   }
 
   // ── Profile ───────────────────────────────────────────────────────────────
-  if (!getIt.isRegistered<ProfileBloc>()) {
-    getIt.registerFactory(
-      () => ProfileBloc(authRepository: getIt<AuthRepository>()),
+  // Account Deletion workflow (new)
+  if (!getIt.isRegistered<AccountDeletionRemoteDataSource>()) {
+    getIt.registerLazySingleton<AccountDeletionRemoteDataSource>(
+      () =>
+          AccountDeletionRemoteDataSourceImpl(dio: getIt(instanceName: 'dio')),
     );
   }
+  if (!getIt.isRegistered<AccountDeletionRepository>()) {
+    getIt.registerLazySingleton<AccountDeletionRepository>(
+      () => AccountDeletionRepositoryImpl(
+          remote: getIt<AccountDeletionRemoteDataSource>()),
+    );
+  }
+  if (!getIt.isRegistered<RequestDeletionUseCase>()) {
+    getIt.registerLazySingleton(
+        () => RequestDeletionUseCase(getIt<AccountDeletionRepository>()));
+  }
+  if (!getIt.isRegistered<GetDeletionStatusUseCase>()) {
+    getIt.registerLazySingleton(
+        () => GetDeletionStatusUseCase(getIt<AccountDeletionRepository>()));
+  }
+  if (!getIt.isRegistered<CancelDeletionUseCase>()) {
+    getIt.registerLazySingleton(
+        () => CancelDeletionUseCase(getIt<AccountDeletionRepository>()));
+  }
+  // Override ProfileBloc to include new deletion usecases (generated config has old 1-arg version)
+  if (getIt.isRegistered<ProfileBloc>()) {
+    getIt.unregister<ProfileBloc>();
+  }
+  getIt.registerFactory(
+    () => ProfileBloc(
+      authRepository: getIt<AuthRepository>(),
+      requestDeletionUseCase: getIt<RequestDeletionUseCase>(),
+      getDeletionStatusUseCase: getIt<GetDeletionStatusUseCase>(),
+      cancelDeletionUseCase: getIt<CancelDeletionUseCase>(),
+    ),
+  );
 
   // ── Settings ──────────────────────────────────────────────────────────────
   if (!getIt.isRegistered<SettingsBloc>()) {

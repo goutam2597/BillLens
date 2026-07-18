@@ -22,4 +22,20 @@ class UpdateProfile extends ProfileEvent {
 
 class LogoutRequested extends ProfileEvent {}
 
-class DeleteAccountRequested extends ProfileEvent {}
+class DeleteAccountRequested extends ProfileEvent {
+  final String? reason;
+  const DeleteAccountRequested({this.reason});
+  @override
+  List<Object?> get props => [reason];
+}
+
+class RequestDeleteAccount extends ProfileEvent {
+  final String? reason;
+  const RequestDeleteAccount({this.reason});
+  @override
+  List<Object?> get props => [reason];
+}
+
+class CancelDeleteRequest extends ProfileEvent {}
+
+class LoadDeletionStatus extends ProfileEvent {}

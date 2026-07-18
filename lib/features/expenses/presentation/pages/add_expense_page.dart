@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:billlens/core/widgets/limit_widgets.dart';
 import 'package:billlens/core/di/injection.dart';
 import 'package:go_router/go_router.dart';
 import 'package:billlens/core/router/app_routes.dart';
@@ -15,7 +16,8 @@ import 'package:billlens/features/dashboard/presentation/bloc/dashboard_bloc.dar
 import 'package:billlens/features/dashboard/presentation/bloc/dashboard_event.dart';
 import 'package:billlens/features/analytics/presentation/bloc/analytics_bloc.dart';
 import 'package:billlens/features/analytics/presentation/bloc/analytics_event.dart';
-import 'package:billlens/core/local/local_storage_service.dart';
+import 'package:billlens/core/local/currency_service.dart';
+import 'package:billlens/core/utils/app_utils.dart';
 import 'package:image_picker/image_picker.dart';
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,103 @@ class AddExpensePage extends StatelessWidget {
               ),
             );
             context.safePop(AppRoutes.expenseList);
+          } else if (state.isLimitExceeded) {
+            // ── FIXED LIMITS: Show upgrade dialog for manual limit ──
+            LimitExceededDialog.show(
+              context,
+              message: state.errorMessage ??
+                  'Monthly manual expense limit reached (20/month for free). Upgrade to premium for unlimited.',
+              code: state.limitCode ?? 'MANUAL_LIMIT_EXCEEDED',
+              usage: state.limitUsage,
+              used: state.limitUsage?['used'] as int?,
+              limit: state.limitUsage?['limit'] as int?,
+            );
+          } else if (state.isDuplicate) {
+            // ── DUPLICATE: Show understandable dialog from backend ──
+            final existing = state.duplicateExpense;
+            final vendor = existing?['vendor'] as String? ?? 'this vendor';
+            final amount = existing?['amount']?.toString() ?? '';
+            final date = existing?['date'] as String? ?? '';
+            final existingId = existing?['id']?.toString();
+            final receiptNo = existing?['receipt_number'] as String?;
+
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.15), shape: BoxShape.circle),
+                      child: const Icon(Icons.content_copy_rounded, color: AppColors.warning, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('Duplicate Expense', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18))),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.errorMessage ?? 'This expense already exists in your account.',
+                      style: GoogleFonts.outfit(fontSize: 14, height: 1.4, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (existing != null) ...[
+                            Text('Existing expense:', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+                            const SizedBox(height: 6),
+                            Row(children: [const Icon(Icons.store_rounded, size: 14, color: Colors.grey), const SizedBox(width: 6), Expanded(child: Text(vendor, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600)))]),
+                            const SizedBox(height: 4),
+                            Row(children: [const Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey), const SizedBox(width: 6), Text(date, style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[700]))]),
+                            const SizedBox(height: 4),
+                            Row(children: [const Icon(Icons.attach_money_rounded, size: 14, color: Colors.grey), const SizedBox(width: 6), Text('\$$amount', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600))]),
+                            if (receiptNo != null && receiptNo.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Row(children: [const Icon(Icons.receipt_rounded, size: 14, color: Colors.grey), const SizedBox(width: 6), Text('Receipt #$receiptNo', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[600]))]),
+                            ],
+                          ] else
+                            Text('An expense with same vendor, date and amount already exists.', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[600])),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Suggestion: View existing expense or edit it instead of creating duplicate.',
+                        style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Dismiss', style: GoogleFonts.outfit(color: Colors.grey[600])),
+                  ),
+                  if (existingId != null)
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        context.push('/expenses/$existingId');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text('View Existing', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                    ),
+                ],
+              ),
+            );
           } else if (state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -258,14 +357,7 @@ class _AddExpenseFormState extends State<_AddExpenseForm> {
           userId: '',
           vendor: '',
           amount: 0.0,
-          currency: (() {
-            try {
-              if (getIt.isRegistered<LocalStorageService>()) {
-                return getIt<LocalStorageService>().currency;
-              }
-            } catch (_) {}
-            return 'USD';
-          })(),
+          currency: CurrencyService.resolveSync(),
           date: now,
           syncStatus: 'pending',
           createdAt: now,
@@ -554,7 +646,7 @@ class _AmountField extends StatelessWidget {
         borderColor: borderColor,
         surfaceColor: surfaceColor,
         prefix: Text(
-          '\$ ',
+          '${AppUtils.getCurrencySymbol(CurrencyService.resolveSync())} ',
           style: GoogleFonts.outfit(
             fontSize: 14,
             fontWeight: FontWeight.w600,

@@ -81,6 +81,18 @@ import '../network/auth_interceptor.dart' as _i908;
 import '../network/connectivity_service.dart' as _i491;
 import '../network/network_module.dart' as _i200;
 import 'local_module.dart' as _i519;
+import '../../features/profile/data/datasources/account_deletion_remote_data_source.dart'
+    as _i1100;
+import '../../features/profile/domain/repositories/account_deletion_repository.dart'
+    as _i1101;
+import '../../features/profile/data/repositories/account_deletion_repository_impl.dart'
+    as _i1102;
+import '../../features/profile/domain/usecases/request_deletion_usecase.dart'
+    as _i1103;
+import '../../features/profile/domain/usecases/get_deletion_status_usecase.dart'
+    as _i1104;
+import '../../features/profile/domain/usecases/cancel_deletion_usecase.dart'
+    as _i1105;
 
 extension GetItInjectableX on _i174.GetIt {
 // initializes the registration of main-scope dependencies inside of GetIt
@@ -125,8 +137,11 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i810.AdsBloc(storage: gh<_i847.LocalStorageService>()));
     gh.factory<_i585.SettingsBloc>(
         () => _i585.SettingsBloc(storage: gh<_i847.LocalStorageService>()));
-    gh.factory<_i858.SubscriptionBloc>(
-        () => _i858.SubscriptionBloc(storage: gh<_i847.LocalStorageService>()));
+    gh.factory<_i858.SubscriptionBloc>(() => _i858.SubscriptionBloc(
+          storage: gh<_i847.LocalStorageService>(),
+          dio: gh<_i361.Dio>(instanceName: 'dio'),
+          expenseLocalDataSource: gh<_i22.ExpenseLocalDataSource>(),
+        ));
     gh.lazySingleton<_i266.CategoryRepository>(
         () => _i894.CategoryRepositoryImpl(
               localDataSource: gh<_i390.CategoryLocalDataSource>(),
@@ -157,9 +172,13 @@ extension GetItInjectableX on _i174.GetIt {
           localDataSource: gh<_i22.ExpenseLocalDataSource>(),
           remoteDataSource: gh<_i489.ExpenseRemoteDataSource>(),
           connectivityService: gh<_i491.ConnectivityService>(),
+          authLocalDataSource: gh<_i852.AuthLocalDataSource>(),
         ));
-    gh.factory<_i473.ReceiptProcessingBloc>(
-        () => _i473.ReceiptProcessingBloc(gh<_i361.Dio>(instanceName: 'dio')));
+    gh.factory<_i473.ReceiptProcessingBloc>(() => _i473.ReceiptProcessingBloc(
+          gh<_i361.Dio>(instanceName: 'dio'),
+          gh<_i22.ExpenseLocalDataSource>(),
+          gh<_i852.AuthLocalDataSource>(),
+        ));
     gh.lazySingleton<_i188.CreateExpenseUseCase>(
         () => _i188.CreateExpenseUseCase(gh<_i939.ExpenseRepository>()));
     gh.lazySingleton<_i172.DeleteExpenseUseCase>(
@@ -193,14 +212,31 @@ extension GetItInjectableX on _i174.GetIt {
           remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
           localDataSource: gh<_i852.AuthLocalDataSource>(),
         ));
+    gh.lazySingleton<_i1100.AccountDeletionRemoteDataSource>(() =>
+        _i1100.AccountDeletionRemoteDataSourceImpl(
+            dio: gh<_i361.Dio>(instanceName: 'dio')));
+    gh.lazySingleton<_i1101.AccountDeletionRepository>(() =>
+        _i1102.AccountDeletionRepositoryImpl(
+            remote: gh<_i1100.AccountDeletionRemoteDataSource>()));
+    gh.lazySingleton<_i1103.RequestDeletionUseCase>(() =>
+        _i1103.RequestDeletionUseCase(gh<_i1101.AccountDeletionRepository>()));
+    gh.lazySingleton<_i1104.GetDeletionStatusUseCase>(() =>
+        _i1104.GetDeletionStatusUseCase(
+            gh<_i1101.AccountDeletionRepository>()));
+    gh.lazySingleton<_i1105.CancelDeletionUseCase>(() =>
+        _i1105.CancelDeletionUseCase(gh<_i1101.AccountDeletionRepository>()));
     gh.lazySingleton<_i188.LoginUseCase>(
         () => _i188.LoginUseCase(gh<_i787.AuthRepository>()));
     gh.lazySingleton<_i48.LogoutUseCase>(
         () => _i48.LogoutUseCase(gh<_i787.AuthRepository>()));
     gh.lazySingleton<_i941.RegisterUseCase>(
         () => _i941.RegisterUseCase(gh<_i787.AuthRepository>()));
-    gh.factory<_i469.ProfileBloc>(
-        () => _i469.ProfileBloc(authRepository: gh<_i787.AuthRepository>()));
+    gh.factory<_i469.ProfileBloc>(() => _i469.ProfileBloc(
+          authRepository: gh<_i787.AuthRepository>(),
+          requestDeletionUseCase: gh<_i1103.RequestDeletionUseCase>(),
+          getDeletionStatusUseCase: gh<_i1104.GetDeletionStatusUseCase>(),
+          cancelDeletionUseCase: gh<_i1105.CancelDeletionUseCase>(),
+        ));
     gh.factory<_i797.AuthBloc>(() => _i797.AuthBloc(
           gh<_i787.AuthRepository>(),
           gh<_i188.LoginUseCase>(),

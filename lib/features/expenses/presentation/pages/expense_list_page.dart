@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:billlens/core/router/app_routes.dart';
 import 'package:billlens/core/theme/app_colors.dart';
 import 'package:billlens/core/utils/app_utils.dart';
+import 'package:billlens/core/local/currency_service.dart';
 import 'package:billlens/core/widgets/app_widgets.dart';
 import 'package:billlens/core/widgets/delete_confirmation_dialog.dart';
 import '../../domain/entities/expense.dart';
@@ -122,9 +123,12 @@ class _ExpenseListViewState extends State<_ExpenseListView> {
                               setState(() => _selectedFilter = i),
                         ),
                         const SizedBox(height: 16),
-                        _TotalSummary(
-                          total: AppUtils.formatCurrency(total),
-                          count: filtered.length,
+                        ValueListenableBuilder<String>(
+                          valueListenable: CurrencyService.notifier,
+                          builder: (context, cur, _) => _TotalSummary(
+                            total: AppUtils.formatCurrency(total, currency: cur),
+                            count: filtered.length,
+                          ),
                         ),
                       ],
                     ),

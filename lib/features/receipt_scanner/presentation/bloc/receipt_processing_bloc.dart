@@ -2,27 +2,84 @@ import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import 'receipt_processing_event.dart';
 import 'receipt_processing_state.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../../domain/services/receipt_text_classifier.dart';
+import '../../../expenses/data/datasources/expense_local_data_source.dart';
+import '../../../auth/data/datasources/auth_local_data_source.dart';
 
 @injectable
 class ReceiptProcessingBloc
     extends Bloc<ReceiptProcessingEvent, ReceiptProcessingState> {
   final Dio _dio;
+  final ExpenseLocalDataSource _expenseLocal;
+  final AuthLocalDataSource _authLocal;
 
-  ReceiptProcessingBloc(@Named('dio') this._dio)
-      : super(const ProcessingInitial()) {
+  ReceiptProcessingBloc(
+    @Named('dio') this._dio,
+    this._expenseLocal,
+    this._authLocal,
+  ) : super(const ProcessingInitial()) {
     on<StartReceiptProcessing>(_onStart);
     on<RunOcrExtraction>(_onRunOcr);
     on<RunAiCategorization>(_onRunAiCategorization);
+  }
+
+  Future<bool> _isPremium() async {
+    // Check backend first (source of truth)
+    try {
+      final resp = await _dio.get('/api/subscription/usage');
+      if (resp.statusCode == 200) {
+        final data = resp.data['data'] as Map<String, dynamic>?;
+        if (data != null && data['is_premium'] == true) return true;
+      }
+    } catch (_) {}
+    // Fallback to cached user
+    try {
+      final user = await _authLocal.getCachedUser();
+      return user?.subscriptionStatus == AppConstants.planPremium;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _onStart(
     StartReceiptProcessing event,
     Emitter<ReceiptProcessingState> emit,
   ) async {
+    // ── FIXED LIMITS: Backend + local pre-check before any AI cost ──
+    // Free: 10 scans/month, Premium: 300 scans/month (manual unlimited, no AI)
+    try {
+      final isPremium = await _isPremium();
+      int backendScans = 0;
+      try {
+        final resp = await _dio.get('/api/subscription/usage');
+        if (resp.statusCode == 200) {
+          final data = resp.data['data'] as Map<String, dynamic>?;
+          backendScans = (data?['scans']?['used'] as int?) ?? (data?['scans_used'] as int? ?? 0);
+        }
+      } catch (_) {}
+      final localScans = await _expenseLocal.getMonthlyScannedCount();
+      final monthlyScans = backendScans > localScans ? backendScans : localScans;
+      final limit = isPremium ? AppConstants.premiumMonthlyScans : AppConstants.freeMonthlyScans;
+      if (monthlyScans >= limit) {
+        emit(ProcessingLimitExceeded(
+          message: isPremium
+              ? 'Monthly AI scan limit reached ($limit/month for premium). Resets next month.'
+              : 'Monthly receipt scan limit reached ($limit/month for free). Upgrade to premium for ${AppConstants.premiumMonthlyScans} scans/month.',
+          code: 'SCAN_LIMIT_EXCEEDED',
+          used: monthlyScans,
+          limit: limit,
+          resetsAt: _getNextMonthReset(),
+        ));
+        return;
+      }
+    } catch (_) {
+      // If check fails, continue to backend enforcement (source of truth will block with 429)
+    }
+
     // ── Step 1: Compressing / preparing image ──────────────────────────
     emit(const ProcessingStep(
       stepIndex: 1,
@@ -165,12 +222,49 @@ class ReceiptProcessingBloc
         ));
       }
     } on DioException catch (e) {
+      final responseData = e.response?.data;
+      final statusCode = e.response?.statusCode;
+
+      // ── FIXED LIMITS: Handle 429 scan limit ──
+      if (statusCode == 429) {
+        final dataMap = responseData is Map<String, dynamic> ? responseData : null;
+        final code = dataMap?['code'] as String? ?? 'SCAN_LIMIT_EXCEEDED';
+        final message = dataMap?['message'] as String? ??
+            e.response?.data?['message'] ??
+            e.message ??
+            'Monthly scan limit reached';
+
+        final usage = dataMap?['data'] as Map<String, dynamic>?;
+        final used = (usage?['scans']?['used'] as int?) ??
+            (usage?['scans_used'] as int?) ??
+            AppConstants.freeMonthlyScans;
+        final limit = (usage?['scans']?['limit'] as int?) ??
+            (usage?['scans_limit'] as int?) ??
+            AppConstants.freeMonthlyScans;
+
+        emit(ProcessingLimitExceeded(
+          message: message,
+          code: code,
+          used: used,
+          limit: limit,
+          resetsAt: (usage?['resets_at'] as String?) ?? _getNextMonthReset(),
+          usage: usage,
+        ));
+        return;
+      }
+
       final msg =
-          e.response?.data?['message'] ?? e.message ?? 'Connection error';
-      emit(ProcessingError(msg));
+          responseData is Map ? responseData['message'] as String? : null;
+      emit(ProcessingError(msg ?? e.message ?? 'Connection error'));
     } catch (e) {
       emit(ProcessingError(e.toString()));
     }
+  }
+
+  String _getNextMonthReset() {
+    final now = DateTime.now();
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
+    return nextMonth.toIso8601String();
   }
 
   Future<void> _onRunOcr(

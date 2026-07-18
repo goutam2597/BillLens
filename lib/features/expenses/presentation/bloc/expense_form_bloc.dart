@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/errors/failures.dart';
 import '../../domain/entities/expense.dart';
 import '../../domain/usecases/create_expense_usecase.dart';
 import '../../domain/usecases/update_expense_usecase.dart';
@@ -50,7 +51,7 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
   ) async {
     if (!state.isValid) return;
 
-    emit(state.copyWith(isSubmitting: true, errorMessage: null));
+    emit(state.copyWith(isSubmitting: true, errorMessage: null, isLimitExceeded: false, isDuplicate: false));
 
     final expense = state.expense;
     final result = expense.id.isEmpty
@@ -58,10 +59,29 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         : await _updateExpenseUseCase(expense);
 
     result.fold(
-      (failure) => emit(state.copyWith(
-        isSubmitting: false,
-        errorMessage: failure.message,
-      )),
+      (failure) {
+        if (failure is LimitExceededFailure) {
+          emit(state.copyWith(
+            isSubmitting: false,
+            errorMessage: failure.message,
+            isLimitExceeded: true,
+            limitCode: failure.code,
+            limitUsage: failure.usage,
+          ));
+        } else if (failure is DuplicateFailure) {
+          emit(state.copyWith(
+            isSubmitting: false,
+            errorMessage: failure.message,
+            isDuplicate: true,
+            duplicateExpense: failure.existingExpense,
+          ));
+        } else {
+          emit(state.copyWith(
+            isSubmitting: false,
+            errorMessage: failure.message,
+          ));
+        }
+      },
       (_) => emit(state.copyWith(
         isSubmitting: false,
         isSuccess: true,

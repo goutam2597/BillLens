@@ -6,6 +6,8 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../models/user_model.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/local/local_storage_service.dart';
 
 abstract class UserRepository {
   Future<Either<Failure, UserModel>> updateProfile({
@@ -41,6 +43,14 @@ class UserRepositoryImpl implements UserRepository {
   })  : _dio = dio,
         _localDataSource = localDataSource;
 
+  Future<void> _syncCurrencyToPrefs(String currency) async {
+    try {
+      if (getIt.isRegistered<LocalStorageService>()) {
+        await getIt<LocalStorageService>().syncCurrencyFromServer(currency);
+      }
+    } catch (_) {}
+  }
+
   @override
   Future<Either<Failure, UserModel>> updateProfile({
     required String userId,
@@ -56,6 +66,7 @@ class UserRepositoryImpl implements UserRepository {
     String? currency,
   }) async {
     try {
+      final cached = await _localDataSource.getCachedUser();
       final data = <String, dynamic>{};
       if (name != null) data['name'] = name;
       if (firstName != null) data['first_name'] = firstName;
@@ -71,9 +82,33 @@ class UserRepositoryImpl implements UserRepository {
       final response = await _dio.put('/api/profile', data: data);
       if (response.statusCode == 200) {
         final json = response.data['data'] as Map<String, dynamic>;
-        final updatedUser = UserModel.fromJson(json);
+        final parsed = UserModel.fromJson(json);
+        // Preserve token — backend profile does not return token
+        final token = cached?.token ?? parsed.token;
+        final updatedUser = UserModel(
+          id: parsed.id,
+          name: parsed.name,
+          firstName: parsed.firstName,
+          lastName: parsed.lastName,
+          email: parsed.email,
+          phone: parsed.phone,
+          businessName: parsed.businessName,
+          address: parsed.address,
+          city: parsed.city,
+          state: parsed.state,
+          zip: parsed.zip,
+          avatarUrl: parsed.avatarUrl,
+          currency: parsed.currency,
+          token: token,
+          subscriptionStatus: parsed.subscriptionStatus,
+          subscriptionExpiry: parsed.subscriptionExpiry,
+          createdAt: parsed.createdAt,
+          updatedAt: parsed.updatedAt,
+          hasPassword: parsed.hasPassword,
+        );
         // Persist the updated user so CheckAuthStatus returns fresh data
         await _localDataSource.cacheUser(updatedUser);
+        await _syncCurrencyToPrefs(updatedUser.currency);
         return Right(updatedUser);
       }
       throw ServerException(response.data['message'] ?? 'Update failed');

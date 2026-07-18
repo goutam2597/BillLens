@@ -55,6 +55,12 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- UCrop activity for image_cropper (required to prevent crash) -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
         <!-- AdMob application ID. Replace with your production ID before release. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"

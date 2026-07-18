@@ -83,19 +83,20 @@ class _AiProcessingPageState extends State<AiProcessingPage>
           } else if (state is ProcessingSuccess) {
             _scanController.stop();
             context.pushReplacement(AppRoutes.receiptResult, extra: state);
-          } else if (state is ProcessingError) {
+          } else if (state is ProcessingError || state is ProcessingLimitExceeded) {
             _scanController.stop();
           }
         },
         builder: (context, state) {
           final hasError = state is ProcessingError;
-          final progress = hasError
+          final isLimitExceeded = state is ProcessingLimitExceeded;
+          final progress = hasError || isLimitExceeded
               ? _currentStep / _totalSteps
               : ((_currentStep + 1) / _totalSteps).clamp(0.0, 1.0);
           final currentLabel = state is ProcessingStep
               ? state.label
-              : hasError
-                  ? 'We could not read this receipt'
+              : hasError || isLimitExceeded
+                  ? 'Limit or error'
                   : 'Preparing your receipt';
 
           return Scaffold(
@@ -126,28 +127,33 @@ class _AiProcessingPageState extends State<AiProcessingPage>
                           _ReceiptPreview(
                             imagePath: widget.imagePath,
                             scanAnimation: _scanController,
-                            hasError: hasError,
+                            hasError: hasError || isLimitExceeded,
                           ),
                           const SizedBox(height: 24),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 250),
-                            child: hasError
-                                ? _FailurePanel(
-                                    key: const ValueKey('failure'),
-                                    message: state.message,
-                                    onRetake: () =>
-                                        context.go(AppRoutes.receiptScanner),
-                                    onRetry: _retry,
-                                    onClose: () =>
-                                        context.go(AppRoutes.dashboard),
+                            child: state is ProcessingLimitExceeded
+                                ? _LimitExceededPanel(
+                                    key: const ValueKey('limit'),
+                                    state: state,
+                                    onUpgrade: () => context.go(AppRoutes.subscription),
+                                    onClose: () => context.go(AppRoutes.dashboard),
                                   )
-                                : _ProgressPanel(
-                                    key: const ValueKey('progress'),
-                                    currentLabel: currentLabel,
-                                    currentStep: _currentStep,
-                                    progress: progress,
-                                    colorScheme: colorScheme,
-                                  ),
+                                : state is ProcessingError
+                                    ? _FailurePanel(
+                                        key: const ValueKey('failure'),
+                                        message: state.message,
+                                        onRetake: () => context.go(AppRoutes.receiptScanner),
+                                        onRetry: _retry,
+                                        onClose: () => context.go(AppRoutes.dashboard),
+                                      )
+                                    : _ProgressPanel(
+                                        key: const ValueKey('progress'),
+                                        currentLabel: currentLabel,
+                                        currentStep: _currentStep,
+                                        progress: progress,
+                                        colorScheme: colorScheme,
+                                      ),
                           ),
                         ],
                       ),
@@ -159,6 +165,106 @@ class _AiProcessingPageState extends State<AiProcessingPage>
           );
         },
       ),
+    );
+  }
+}
+
+class _LimitExceededPanel extends StatelessWidget {
+  const _LimitExceededPanel({
+    super.key,
+    required this.state,
+    required this.onUpgrade,
+    required this.onClose,
+  });
+
+  final ProcessingLimitExceeded state;
+  final VoidCallback onUpgrade;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.document_scanner_rounded, color: AppColors.error, size: 36),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Scan Limit Reached',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            '${state.used}/${state.limit} AI scans this month — Fixed (Free)',
+            style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warning),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          state.message,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(fontSize: 14, height: 1.5, color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 20),
+        AppGroupedSurface(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.lock_rounded, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                  Text('Fixed limits cannot be overridden', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[700], fontWeight: FontWeight.w500)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: 1.0,
+                backgroundColor: const Color(0xFFE2E8F0),
+                valueColor: const AlwaysStoppedAnimation(AppColors.error),
+                minHeight: 6,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You used all ${state.limit} free AI scans this month. Upgrade for unlimited, or wait until ${state.resetsAt.isNotEmpty ? state.resetsAt.substring(0, 10) : 'next month'}.',
+                style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: onUpgrade,
+            icon: const Icon(Icons.workspace_premium_rounded),
+            label: Text('Upgrade to Premium', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextButton(onPressed: onClose, child: Text('Back to Dashboard', style: GoogleFonts.outfit(color: Colors.grey[600]))),
+      ],
     );
   }
 }
@@ -230,8 +336,7 @@ class _ReceiptPreview extends StatelessWidget {
                               color: AppColors.accent,
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      AppColors.accent.withValues(alpha: 0.65),
+                                  color: AppColors.accent.withValues(alpha: 0.65),
                                   blurRadius: 14,
                                   spreadRadius: 3,
                                 ),
@@ -272,6 +377,72 @@ class _ReceiptPreview extends StatelessWidget {
   }
 }
 
+/// Loading dots animation — shows 3 pulsing dots during processing
+class _LoadingDots extends StatefulWidget {
+  final Color color;
+  final double size;
+
+  const _LoadingDots({this.color = AppColors.primary, this.size = 6});
+
+  @override
+  State<_LoadingDots> createState() => _LoadingDotsState();
+}
+
+class _LoadingDotsState extends State<_LoadingDots> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Fixed width with small buffer to prevent 3px overflow on tight parents
+    final totalWidth = widget.size * 3 + 8;
+    return SizedBox(
+      width: totalWidth,
+      height: widget.size,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: List.generate(3, (index) {
+              double dotOpacity;
+              final cycle = (_controller.value + index * 0.2) % 1.0;
+              if (cycle < 0.33) {
+                dotOpacity = 1.0;
+              } else if (cycle < 0.66) {
+                dotOpacity = 0.4;
+              } else {
+                dotOpacity = 0.2;
+              }
+              return Container(
+                margin: EdgeInsets.only(left: index == 0 ? 0 : 2),
+                width: widget.size,
+                height: widget.size,
+                decoration: BoxDecoration(
+                  color: widget.color.withValues(alpha: dotOpacity),
+                  shape: BoxShape.circle,
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _ProgressPanel extends StatelessWidget {
   const _ProgressPanel({
     super.key,
@@ -290,14 +461,24 @@ class _ProgressPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          currentLabel,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onSurface,
-          ),
+        // Animated current label with dots
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                currentLabel,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _LoadingDots(color: colorScheme.primary, size: 7),
+          ],
         ),
         const SizedBox(height: 8),
         Text(
@@ -333,6 +514,8 @@ class _ProgressPanel extends StatelessWidget {
                       color: colorScheme.primary,
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  _LoadingDots(color: colorScheme.primary, size: 5),
                 ],
               ),
               const SizedBox(height: 12),
@@ -345,12 +528,11 @@ class _ProgressPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 22),
-              ...List.generate(_AiProcessingPageState._stepLabels.length,
-                  (index) {
+              // Timeline steps with loading dots for active
+              ...List.generate(_AiProcessingPageState._stepLabels.length, (index) {
                 final complete = index < currentStep;
                 final active = index == currentStep;
-                final isLast =
-                    index == _AiProcessingPageState._stepLabels.length - 1;
+                final isLast = index == _AiProcessingPageState._stepLabels.length - 1;
                 return _TimelineStep(
                   label: _AiProcessingPageState._stepLabels[index],
                   complete: complete,
@@ -358,26 +540,65 @@ class _ProgressPanel extends StatelessWidget {
                   isLast: isLast,
                 );
               }),
+              const SizedBox(height: 16),
+              // Live stats with loading dots
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.analytics_outlined, size: 16, color: colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text('AI extracting',
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.onSurface)),
+                          ),
+                          const SizedBox(width: 6),
+                          _LoadingDots(color: colorScheme.primary, size: 4),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text('Vendor • Amount • Date',
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.outfit(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.lock_outline_rounded,
-              size: 15,
-              color: colorScheme.onSurfaceVariant,
-            ),
+            Icon(Icons.lock_outline_rounded, size: 15, color: colorScheme.onSurfaceVariant),
             const SizedBox(width: 6),
-            Text(
-              'Your receipt is processed securely',
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                color: colorScheme.onSurfaceVariant,
+            Flexible(
+              child: Text(
+                'Your receipt is processed securely',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
+            const SizedBox(width: 6),
+            _LoadingDots(color: colorScheme.onSurfaceVariant, size: 3),
           ],
         ),
       ],
@@ -419,26 +640,15 @@ class _TimelineStep extends StatelessWidget {
                   width: 20,
                   height: 20,
                   decoration: BoxDecoration(
-                    color:
-                        complete || active ? markerColor : Colors.transparent,
+                    color: complete || active ? markerColor : Colors.transparent,
                     shape: BoxShape.circle,
                     border: Border.all(color: markerColor, width: 1.5),
                   ),
                   child: complete
-                      ? const Icon(Icons.check_rounded,
-                          size: 13, color: Colors.white)
+                      ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
                       : active
-                          ? const Center(
-                              child: SizedBox(
-                                width: 6,
-                                height: 6,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
+                          ? Center(
+                              child: _LoadingDots(color: Colors.white, size: 4),
                             )
                           : null,
                 ),
@@ -459,15 +669,25 @@ class _TimelineStep extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(bottom: isLast ? 0 : 17),
-              child: Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                  color: complete || active
-                      ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant,
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                        color: complete || active ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (active) ...[
+                    const SizedBox(width: 8),
+                    _LoadingDots(color: colorScheme.primary, size: 5),
+                  ],
+                  if (complete)
+                    Icon(Icons.check_circle_rounded, size: 16, color: AppColors.accent),
+                ],
               ),
             ),
           ),
